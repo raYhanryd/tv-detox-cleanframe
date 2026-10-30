@@ -3,3 +3,9 @@ key.jks
 *.apk
 .DS_Store
 .idea
+
+# Project-local toolchains, emulator and Python venv. Delete .tools/ to remove everything installed for this project.
+.tools/
+.android/
+.venv/
+*.log

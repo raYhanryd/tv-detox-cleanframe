@@ -1,3 +1,5 @@
+> **Fork note:** this copy is being restyled as a CleanFrame-style native launcher for a Google TV. Read [AGENTS.md](AGENTS.md) for agent/session state, [GUIDE.md](GUIDE.md) for setup, install and recovery, and [PROGRESS.md](PROGRESS.md) for what is done and next. The restyle is not built yet.
+
 <div align="center">
 
 # TV Detox
