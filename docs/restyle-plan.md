@@ -4,7 +4,7 @@
 
 ## What this workspace is
 
-- Base: [Ansub/tv-detox](https://github.com/Ansub/tv-detox) upstream `main` (version 1.5.7), cloned into an empty workspace. If your fork has different code, point me at it before I write anything.
+- Base: [Ansub/tv-detox](https://github.com/Ansub/tv-detox) upstream `main` (version 1.5.7), mirrored to the owner's private repo <https://github.com/raYhanryd/tv-detox-cleanframe>. `origin` stays read-only.
 - tv-detox has no `AGENTS.md`; I read `README.md`, `docs/debloat.md`, the manifest, `build.sh`, `install.sh`/`candidates.sh`/`undo.sh` interfaces, and all of `src/com/ansub/tvhome/`.
 - CleanFrame reference: cloned separately (not part of this app). Read `AGENTS.md`, `README.md`, `docs/development.md` context, `docs/interaction-behaviour.md`, `docs/assets.md`, `docs/asset-sources.md`, `THIRD_PARTY_NOTICES.md`, `app/style.css`, and the dock/item geometry in `app/main.js`. No CleanFrame code will be ported; it is a Tizen web app, this stays native Java.
 
@@ -100,16 +100,16 @@ Then present three options with those numbers and risks:
 
 I will recommend one based on the numbers and wait. Separately, Settings gets a **Google TV home** row that opens `com.google.android.apps.tv.launcherx/.home.HomeActivity` only if it resolves and is enabled; otherwise the row says it is disabled.
 
-## Build tooling (not installed)
+## Build tooling (installed locally)
 
-Ask before installing; approximate download sizes:
+Everything lives in `.tools/` and nothing was installed system-wide:
 
-- `openjdk@17` via Homebrew (~300 MB installed)
-- Android command-line tools (~150 MB) + platform-tools/adb (~15 MB)
-- `platforms;android-34` (~70 MB) and `build-tools;34.0.0` (~60 MB)
-- Emulator + Android TV 11 system image only if you want emulator-first screenshots (~1.5 GB). Otherwise build and test on the TV, with screenshots from the device.
+- Temurin JDK 17.0.21 (local tarball)
+- Android command-line tools 19.0 + platform-tools 37.0.1 (adb)
+- `platforms;android-34` and `build-tools;34.0.0`
+- Emulator **not** installed; Android TV ARM64 images exist only for API 31/33/34/36 (~1.6–2 GB if wanted).
 
-Build with the existing `sh build.sh`; add `-A assets` so the generated wallpapers, glass panels, marks and font are packaged. No Gradle, no new Java libraries.
+`. tools/env.sh` sets the paths; the unchanged launcher builds with `sh build.sh` to a signed 54 KB `out/tvhome.apk`. The restyle will add `-A assets` so the generated wallpapers, glass panels, marks and font are packaged. No Gradle, no new Java libraries.
 
 ## Recovery before anything risky
 

@@ -13,8 +13,8 @@
 | 1080p mockups + generator | Done — [mockups/](mockups/) |
 | Design approval | Pending explicit approval before Android code |
 | GitHub repo | Created: <https://github.com/raYhanryd/tv-detox-cleanframe> (private) |
-| Local toolchain | In progress / see log |
-| Baseline build | Not yet |
+| Local toolchain | **Installed** in `.tools/` (JDK 17.0.21, sdkmanager 19.0, adb 37.0.1, platform 34, build-tools 34.0.0) |
+| Baseline build | **Verified** — `out/tvhome.apk`, signed, 54 KB, not installed |
 | Emulator | Not installed; API 33/34 ARM64 recommended (no API 30 ARM image) |
 | Restyled UI | Not started |
 | TV install / Home button | Not started |
@@ -41,9 +41,8 @@
 
 ## Next steps (in order)
 
-1. Finish the local `.tools/` JDK 17 + Android SDK install and build the **unchanged** launcher (baseline APK).
-2. Get explicit design approval from the owner.
-3. Implement the dock, pre-rendered glass, wallpapers, Settings toggles and Google TV home entry in Java.
+1. Get explicit design approval from the owner.
+2. Implement the dock, pre-rendered glass, wallpapers, Settings toggles and Google TV home entry in Java.
 4. Screenshot each stage; run focus/add/remove/HDMI/network/clock tests.
 5. Optional local emulator (API 33/34 ARM64) for UI verification; measure what it can.
 6. Connect to the TV only after owner confirmation; install, set Home, measure RAM/frames, then cleanup one approved change at a time.
@@ -53,6 +52,7 @@
 
 - **2026-10-30** — Discovery and design. Mockups: `01-home-dock-misty.png`, `02-home-dock-alpine.png`, `03-settings-wallpaper.png`, `04-settings-overview.png`. GitHub repo created (private). Owner answers recorded above. No device access.
 - **2026-10-30** — Emulator research: Android TV ARM64 system images start at API 31; API 30 has x86 only. Emulator, if used, will be API 33/34 and stored in `.tools/`.
+- **2026-10-30** — Installed local JDK 17.0.21 + Android SDK (platform-tools 37.0.1, platform 34, build-tools 34.0.0) under `.tools/` (818 MB). Added `tools/env.sh`. Built the unchanged launcher: `sh build.sh` exit 0, `out/tvhome.apk` 54 KB, `apksigner verify` OK, package 1.5.7 / minSdk 21 / targetSdk 34. Not installed on any device.
 
 ## Open risks
 

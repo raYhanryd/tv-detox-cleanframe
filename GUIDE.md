@@ -7,7 +7,7 @@ This is the human guide for this fork. For agent/session state read [AGENTS.md](
 - **The launcher has not been installed on the TV.**
 - **No Android code has been changed yet.** The design mockups are in [mockups/](mockups/).
 - A private GitHub copy lives at <https://github.com/raYhanryd/tv-detox-cleanframe>.
-- Build tools are being kept inside this project so they can be deleted in one go.
+- Build tools are installed inside this project. The **unchanged launcher builds** to `out/tvhome.apk` (signed, 54 KB) but has **not** been installed on the TV.
 
 ## Tools and deleting them
 
@@ -15,12 +15,12 @@ Everything this project installs for development goes in `.tools/` inside this f
 
 | Folder | What it holds | Approx. size |
 | --- | --- | --- |
-| `.tools/jdk-17` | Temurin JDK 17, used only by the build | ~300 MB |
-| `.tools/android-sdk` | adb, platform 34, build-tools 34.0.0 | ~200 MB |
+| `.tools/jdk-17` | Temurin JDK **17.0.21**, used only by the build | ~300 MB |
+| `.tools/android-sdk` | adb **37.0.1**, platform **34**, build-tools **34.0.0** | ~500 MB |
 | `.tools/android-home` | adb keys/config when the tools honour `ANDROID_USER_HOME` | small |
 | `.tools/avd` | emulator virtual devices, if installed | 1–3 GB |
-| `.tools/venv` | Python + Pillow for generating wallpapers/glass | ~30 MB |
-| `.tools/` **total** | | **~0.5 GB now, ~2.5 GB with emulator** |
+| `.tools/venv` | Python + Pillow for generating wallpapers/glass (not created yet) | ~30 MB |
+| `.tools/` **total** | measured on 2026-10-30 | **818 MB now, ~2.5 GB with emulator** |
 
 Delete the whole `.tools/` folder when you are done; nothing outside it is needed for the build. A tiny `~/.android/adbkey` may still be created by adb (a few KB) and can be deleted separately.
 
@@ -28,19 +28,16 @@ Delete the whole `.tools/` folder when you are done; nothing outside it is neede
 
 ## Building
 
-Until the local tools are installed, this section is the target state. After installation:
+The toolchain is installed; one line sets every path:
 
 ```sh
-export JAVA_HOME="$PWD/.tools/jdk-17/Contents/Home"
-export ANDROID_HOME="$PWD/.tools/android-sdk"
-export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
-export ANDROID_USER_HOME="$PWD/.tools/android-home"
-export ANDROID_AVD_HOME="$PWD/.tools/avd"
-
+. tools/env.sh
 sh build.sh
 ```
 
-`build.sh` writes `out/tvhome.apk` and creates `key.jks` on the first build. **Keep `key.jks`**; future updates must be signed with the same key.
+Verified on 2026-10-30: exit 0, `out/tvhome.apk`, signed with the local `key.jks`, package `com.ansub.tvhome` 1.5.7, minSdk 21, targetSdk 34, 54 KB. It has not been installed anywhere yet.
+
+`build.sh` creates `key.jks` on the first build. **Keep `key.jks`**; future updates must be signed with the same key. It is git-ignored, so back it up if you plan to update an installed build from another machine.
 
 ## Putting it on the TV
 

@@ -17,7 +17,8 @@ Remote: `https://github.com/raYhanryd/tv-detox-cleanframe` (private). Upstream r
 - Discovery: both repos read; mapping and constraints in [docs/restyle-plan.md](docs/restyle-plan.md).
 - Mockups: [mockups/](mockups/) (reference + 4 1080p mockups + generator + credits).
 - Owner answered the design questions; see **Owner decisions** below.
-- Next: build the unchanged baseline, then implement the restyle after explicit approval.
+- Local toolchain installed in `.tools/` and the **unchanged baseline builds** (`out/tvhome.apk`, signed, 54 KB, package `com.ansub.tvhome` 1.5.7, minSdk 21, targetSdk 34).
+- Next: explicit approval of the mockups, then implement the restyle.
 
 ## Hard rules
 
@@ -43,9 +44,9 @@ Remote: `https://github.com/raYhanryd/tv-detox-cleanframe` (private). Upstream r
 | Date/clock format | Keep the existing 12/24 preference; do not force it. |
 | YouTube remote button | Not required; do not spend effort preserving it. |
 
-## Tooling layout (planned/being installed)
+## Tooling layout (installed 2026-10-30)
 
-Everything is project-local, git-ignored, and safe to delete with the folder:
+Everything is project-local, git-ignored, and safe to delete with the folder. Installed: Temurin JDK **17.0.21**, sdkmanager **19.0**, platform-tools **37.0.1** (adb 1.0.41), **platforms;android-34**, **build-tools;34.0.0**. `.tools/` is currently ~818 MB. Emulator is **not** installed.
 
 ```
 .tools/
@@ -64,9 +65,8 @@ Emulator reality on Apple Silicon: Android TV ARM64 images exist for **API 31, 3
 ## Build and check
 
 ```sh
-export JAVA_HOME="$PWD/.tools/jdk-17/Contents/Home"
-export ANDROID_HOME="$PWD/.tools/android-sdk"
-"$ANDROID_HOME/platform-tools/adb" version
+. tools/env.sh               # sets JAVA_HOME, ANDROID_HOME, adb and emulator paths
+adb version
 sh build.sh                  # writes out/tvhome.apk
 ```
 
@@ -100,7 +100,7 @@ Do not commit `out/`, `key.jks`, `.tools/`, `.android/`. `key.jks` is generated 
 
 ## Verification requirements
 
-- Build with `sh build.sh`; do not claim success without the APK and install output.
+- Build with `. tools/env.sh && sh build.sh`; do not claim success without the APK and install output. Baseline verified on 2026-10-30 with `apksigner verify` and `aapt2 dump badging`.
 - Emulator/device screenshots at each stage. D-pad: left/right, up to controls, down/back, OK, hold OK, Back, hold Back.
 - `dumpsys gfxinfo com.ansub.tvhome` before/after (janky %, p50/p90/p99), `dumpsys meminfo` before/after. Report real numbers.
 - Re-check `up`/`back` focus, add/remove/replace, HDMI tiles, network icon, clock 12/24, wallpaper persistence, rotation/recreate.
