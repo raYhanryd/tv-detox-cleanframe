@@ -9,7 +9,8 @@ This is the human guide for this fork. For agent/session state read [AGENTS.md](
 - **The restyled launcher is built and verified on an Android TV 14 emulator.** It has **not** been installed on the TV yet.
 - **`out/tvhome.apk` is ready to install**: signed, 3.6 MB, package `com.ansub.tvhome` 1.5.7, minSdk 21, targetSdk 34.
 - No cleanup has been done on the TV. Google TV's home screen is untouched.
-- A private GitHub copy lives at <https://github.com/raYhanryd/tv-detox-cleanframe>.
+- The public GitHub copy lives at <https://github.com/raYhanryd/tv-detox-cleanframe>.
+- No APK is committed. Build `out/tvhome.apk` locally; `install.sh` only installs that file and refuses a build older than its source.
 
 ## Tools and deleting them
 
@@ -58,7 +59,12 @@ Do this after reading the recovery section. The TV is stock and nothing has been
    ```
 
    The debug port changes after a TV restart. Pair and connect again if it drops.
-4. Install the launcher. `install.sh` uses `out/tvhome.apk`, installs it, sets it as a Home candidate, and leaves Google TV's own launcher on:
+4. Build, then install. `install.sh` installs **only** the local `out/tvhome.apk` (it never downloads a prebuilt app), sets it as a Home candidate, and leaves the TV's own launcher on. If a source file is newer than the APK, it stops and asks you to rebuild (`ALLOW_STALE=1` overrides that):
+
+   ```sh
+   . tools/env.sh
+   sh build.sh
+   ```
 
    ```sh
    sh install.sh <TV_IP_OR_IP:PORT> "com.google.android.youtube.tv,com.netflix.ninja"
@@ -80,7 +86,7 @@ Do this after reading the recovery section. The TV is stock and nothing has been
    | Spotify | `com.spotify.tv.android` |
    | Apple TV | `com.apple.atve.androidtv.appletv` |
 
-5. **Home button on this launcher:** TV **Settings → Device Preferences → Accessibility → Home button** (the app's accessibility service). On Android 13+ sideloaded apps, if the toggle is greyed out, open **Settings → Apps → See all apps → Home → ⋮ → Allow restricted settings** first. Play Protect may warn because the app has an accessibility service.
+5. **Home button on this launcher:** TV **Settings → Device Preferences → Accessibility → Home button** (the app's accessibility service). It works with Google TV's launcher (`launcherx`), Android TV 9–11's (`tvlauncher`) and the older leanback launcher, without disabling any of them. On Android 13+ sideloaded apps, if the toggle is greyed out, open **Settings → Apps → See all apps → Home → ⋮ → Allow restricted settings** first. Play Protect may warn because the app has an accessibility service.
 6. If the Accessibility screen freezes, enable the service over adb instead (keeps other services):
 
    ```sh
@@ -154,8 +160,9 @@ Do **not** disable it as part of cleanup. First measure how much it costs when i
 
 ```sh
 adb shell dumpsys meminfo com.google.android.apps.tv.launcherx
+adb shell dumpsys meminfo com.google.android.tvlauncher
 adb shell dumpsys meminfo | grep -E "Free RAM|Used RAM|Lost RAM"
-adb shell dumpsys activity processes | grep -A3 tv.launcherx
+adb shell dumpsys activity processes | grep -A3 -E "launcherx|tvlauncher|leanbacklauncher"
 ```
 
 Then choose, with real numbers:
@@ -181,10 +188,11 @@ If SmartTube is installed, it appears under **Apps** and can be added to the doc
 ## Recovery
 
 - **Home opens the wrong thing:** Settings → Accessibility → **Home button** off. Or uninstall this launcher.
+- **Back to the stock home:** hold Back opens whichever stock home screen the TV has. The **Google TV home** row in Settings does the same and reads *Enabled*, *Disabled* or *Not available*.
 - **Uninstall the launcher:** `adb uninstall com.ansub.tvhome`.
 - **Restore the stock home and remove this one:** `sh undo.sh <TV_IP>`.
 - **A disabled package broke something:** `adb shell pm enable <package>`; if the TV won't boot, connect in the first seconds after power-on, `adb wait-for-device`, then re-enable packages from `pm list packages -d`.
-- **Home role stuck:** `adb shell cmd package set-home-activity com.google.android.apps.tv.launcherx/.home.HomeActivity` then reboot. (On some TVs the setup app is the fallback; the TV Detox README covers that.)
+- **Home role stuck:** `adb shell cmd package set-home-activity <stock-launcher>/<activity>` then reboot. Use `com.google.android.apps.tv.launcherx/.home.HomeActivity` on Google TV or `com.google.android.tvlauncher/.MainActivity` on Android TV 9–11; check with `adb shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME`. (On some TVs the setup app is the fallback; the TV Detox README covers that.)
 - **Boot loop after disabling Google TV's home:** re-enable `com.google.android.apps.tv.launcherx` and `com.google.android.tungsten.setupwraith` from adb as soon as the TV is reachable. A factory reset is the last resort.
 - **Accessibility service loop:** `adb shell settings put secure accessibility_enabled 0`; clear `enabled_accessibility_services` if needed.
 - **Wireless debugging left on:** turn it off in Developer options when done.

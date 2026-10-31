@@ -4,6 +4,10 @@
 >
 > **What is different here:** a glass dock with six photo wallpapers, a pre-rendered focus plate, a glass Settings panel, a wallpaper picker, and two Settings toggles (**Show date**, default off; **App labels**, default on). App launching, HDMI inputs, add/move/remove/replace, the clock and the network icon are kept. No runtime blur, no layout animation, no system animation-scale changes.
 >
+> **Build it locally first.** No APK is committed, and `install.sh` never downloads a prebuilt app (the upstream release is a different launcher). Run `. tools/env.sh` then `sh build.sh` to produce `out/tvhome.apk`, then `sh install.sh <TV_IP> "<apps>"`. This needs JDK 17: the project does not build with the Java 25 that may be installed system-wide.
+>
+> **In this fork `install.sh` disables nothing by default**, including the TV's own launcher. Home is routed by the **Home button** accessibility service instead (see [GUIDE.md](GUIDE.md)). The stock-launcher/`GOOGLE_TV=1` paragraphs further down describe upstream TV Detox's optional behaviour; here they additionally require `DISABLE_STOCK_HOME=1`, and are not needed.
+>
 > **Read first:** [GUIDE.md](GUIDE.md) for building, installing on the TV, enabling the Home button, the emulator and recovery. [AGENTS.md](AGENTS.md) is the handoff for another model/session. [PROGRESS.md](PROGRESS.md) has the measured results. Asset credits are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 >
 > The rest of this README is upstream TV Detox documentation. Some screenshots, wallpaper text and details describe the original UI; the build in `out/tvhome.apk` is the restyled one described above.
@@ -604,7 +608,7 @@ If the laptop never connects, use the TV's recovery mode or a factory reset. How
    brew install --cask android-commandlinetools
    sdkmanager "platforms;android-34" "build-tools;34.0.0"
    ```
-3. `sh build.sh`, then `sh install.sh <TV_IP>` installs your build instead of the release.
+3. `sh build.sh`, then `sh install.sh <TV_IP>` installs your local `out/tvhome.apk` (there is no release download in this fork).
 4. `sh ci/smoke-test.sh <TV_IP or emulator>` checks it all works.
 5. `CLOCK=24 sh install.sh <TV_IP>` sets a 24-hour clock (or `CLOCK=12` for a 12-hour one, `CLOCK=auto` to follow the TV again). On the TV, holding OK on an HDMI tile renames or removes that input.
 6. Testing the input tiles on an emulator, which has no HDMI ports: `FAKE_INPUT=1 sh install.sh <emulator>`. That builds and installs `ci/fake-input` (a TV input service with no hardware behind it) and tells the home screen to show it. `undo.sh` removes it again. It is for emulators only.

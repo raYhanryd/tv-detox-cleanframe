@@ -6,7 +6,7 @@ The mapping below is kept as the design record. Where the shipped build differs 
 
 ## What this workspace is
 
-- Base: [Ansub/tv-detox](https://github.com/Ansub/tv-detox) upstream `main` (version 1.5.7), mirrored to the owner's private repo <https://github.com/raYhanryd/tv-detox-cleanframe>. `origin` stays read-only.
+- Base: [Ansub/tv-detox](https://github.com/Ansub/tv-detox) upstream `main` (version 1.5.7), mirrored to the owner's public repo <https://github.com/raYhanryd/tv-detox-cleanframe>. `origin` stays read-only.
 - tv-detox has no `AGENTS.md`; the original discovery read `README.md`, `docs/debloat.md`, the manifest, `build.sh`, `install.sh`/`candidates.sh`/`undo.sh` interfaces, and all of `src/com/ansub/tvhome/`.
 - CleanFrame reference: cloned separately (not part of this app). Read `AGENTS.md`, `README.md`, `docs/development.md`, `docs/interaction-behaviour.md`, `docs/assets.md`, `docs/asset-sources.md`, `THIRD_PARTY_NOTICES.md`, `app/style.css`, and the dock/item geometry in `app/main.js`. No CleanFrame code was ported; it is a Tizen web app, this stays native Java.
 
@@ -125,6 +125,6 @@ Everything lives in `.tools/` and nothing was installed system-wide:
 1. **Date:** a **Show date** setting, default off.
 2. **Dock labels:** an **App labels** setting, default names.
 3. **Photos:** six approved Unsplash photos at full quality, with credits.
-4. **Repo:** private GitHub <https://github.com/raYhanryd/tv-detox-cleanframe>. Upstream remains read-only.
+4. **Repo:** public GitHub <https://github.com/raYhanryd/tv-detox-cleanframe>. Upstream remains read-only. The APK is built locally and is not committed.
 5. **Emulator:** installed project-locally, used for verification, removable with `.tools/`.
 6. **YouTube ads:** no blocker bundled; SmartTube documented as a separate optional install.
