@@ -114,7 +114,7 @@ Do not commit `out/`, `key.jks`, `.tools/`, `.android/`. `key.jks` is generated 
 Run on Android TV 14 API 34 emulator, 1920×1080, `-gpu host`, release APK:
 
 - `apksigner verify` OK; package `com.ansub.tvhome`, versionCode 20, 1.5.7, minSdk 21, targetSdk 34; APK 3.6 MB.
-- D-pad: left/right focus, up to Inputs/Apps/Settings/network, down back to dock, OK, hold OK, Back, hold Back.
+- D-pad: left/right focus, up to Inputs/Apps/Settings/network, down back to dock, OK, hold OK, Back. Hold Back was not tested because the emulator has no Google TV launcher.
 - Add (initially empty dock), move (Cast from third to second), replace (YouTube → Google Play Store), remove (Google Play Store gone, only Add left), re-add; no stale tiles after rebuild.
 - Settings: both toggles, wallpaper change (Misty, Forest, Alpine), wallpaper picker, Inputs panel, Apps panel, Back closes panels.
 - Memory: **31.7 MB PSS / 145.9 MB RSS** with wallpaper + dock + Manrope loaded.

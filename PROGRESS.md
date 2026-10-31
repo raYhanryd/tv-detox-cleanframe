@@ -35,7 +35,7 @@
 - Settings is a glass panel with Wallpaper, Apps on Home, Inputs, Show date, App labels, Google TV home, Brightness (non-box TVs) and TV settings.
 - Wallpaper picker: six thumbnails, half-res preview, OK saves, Back leaves the current wallpaper.
 - **Fixed during testing:** a rebuild could leave a removed app's tile in the dock because only tracked views were removed. `buildTiles()` now clears the dock row itself (`dockRow.removeAllViews()`), so a removed tile cannot remain focusable or launchable. Confirmed by removing YouTube and by removing the last app.
-- Preserved app launching, HDMI input list and menus, add/move/replace/remove, hold OK, Back, hold Back, network icon, clock and the `HomeButton` service.
+- Preserved app launching, HDMI input list and menus, add/move/replace/remove, hold OK, Back, network icon, clock and the `HomeButton` service. Hold Back and the Home-button redirect are untouched code but await the TV test.
 
 ### Assets and build
 
@@ -57,7 +57,7 @@
 Environment: Android TV 14 API 34 emulator, 1920×1080, host GPU, release APK installed with `adb install -r`.
 
 - `sh build.sh` exit 0; `apksigner verify` OK; `aapt2 dump badging` reports `com.ansub.tvhome` 1.5.7 (20), minSdk 21, targetSdk 34, leanback launchable activity.
-- D-pad: left/right across the dock, up to the top controls, down back to the dock, OK, hold OK, Back, hold Back.
+- D-pad: left/right across the dock, up to the top controls, down back to the dock, OK, hold OK, Back. Hold Back was not testable on the emulator (no Google TV launcher).
 - Add: started with an empty dock, added YouTube, Google Play Store and Cast.
 - Move: Cast moved from third to second; focus stayed on the moving tile; saved on OK.
 - Replace: YouTube replaced by Google Play Store.
