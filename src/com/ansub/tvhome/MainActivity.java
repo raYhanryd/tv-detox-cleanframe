@@ -7,7 +7,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -332,6 +331,7 @@ public class MainActivity extends Activity {
             if (first != null) first.requestFocus();
         }
         HomeButton.onHomeResumed(this); // back on this home screen: Home comes here again
+        backHeld = false; // a hold that left for the stock home screen is over
         // Only counted as opened once it has stayed up a moment, so a crash right after opening still
         // counts as a failed launch.
         getWindow().getDecorView().postDelayed(homeOk, 1500);
@@ -388,6 +388,14 @@ public class MainActivity extends Activity {
             return true;
         }
         return super.onKeyLongPress(code, ev);
+    }
+
+    // A new Back press means any earlier hold has finished, even if its key-up went to the stock
+    // home screen instead of here. Without this, one stale hold could swallow the next Back.
+    @Override
+    public boolean onKeyDown(int code, KeyEvent ev) {
+        if (code == KeyEvent.KEYCODE_BACK && ev.getRepeatCount() == 0) backHeld = false;
+        return super.onKeyDown(code, ev);
     }
 
     @Override
@@ -760,10 +768,10 @@ public class MainActivity extends Activity {
         };
         labels.row.setOnClickListener(v -> toggleLabels.run());
 
-        final int tv = googleTvHomeState();
-        setting(rows, Strings.t("Google TV home"), tv == 1 ? Strings.t("Enabled")
-                : tv == 2 ? Strings.t("Disabled") : Strings.t("Not available"), () -> {
-            if (tv == 1) {
+        final int tv = HomeButton.stockHomeState(this);
+        setting(rows, Strings.t("Google TV home"), tv == HomeButton.HOME_ENABLED ? Strings.t("Enabled")
+                : tv == HomeButton.HOME_DISABLED ? Strings.t("Disabled") : Strings.t("Not available"), () -> {
+            if (tv == HomeButton.HOME_ENABLED) {
                 d.dismiss();
                 HomeButton.openGoogleTv(this);
             }
@@ -781,20 +789,6 @@ public class MainActivity extends Activity {
         glassStage(d, box);
         d.show();
         rows.getChildAt(0).requestFocus();
-    }
-
-    // 1 = installed and enabled, 2 = installed but disabled, 0 = not on this TV.
-    private int googleTvHomeState() {
-        try {
-            ComponentName cn = new ComponentName("com.google.android.apps.tv.launcherx",
-                    "com.google.android.apps.tv.launcherx.home.HomeActivity");
-            ApplicationInfo info = getPackageManager().getApplicationInfo(cn.getPackageName(), 0);
-            if (!info.enabled) return 2;
-            Intent i = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setComponent(cn);
-            return getPackageManager().resolveActivity(i, 0) != null ? 1 : 0;
-        } catch (Exception e) {
-            return 0;
-        }
     }
 
     // Every launchable app, for the Apps control. The dock stays the home screen; this is the shelf.
@@ -1304,6 +1298,7 @@ public class MainActivity extends Activity {
     // A small menu that drops down under a tile, in the same glass as the tiles. Opens above the
     // tile when there's no room below. Back closes it.
     private void dropdown(View anchor, String[] items, final Pick pick) {
+        if (anchor == null) return; // the tile went away with its app
         final Dialog d = new Dialog(this, android.R.style.Theme_Material_Dialog_NoActionBar);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
@@ -1569,12 +1564,15 @@ public class MainActivity extends Activity {
             return;
         }
         final List<String> pkgs = new ArrayList<>(byLabel.values());
-        String title = replaceIndex < 0 ? Strings.t("Add an app")
-                : String.format(Strings.t("Replace %s"), labelOf(rowApps.get(replaceIndex)));
+        // The dock can change while the panel is open (an app is uninstalled, say), so replace only
+        // at a position that still exists; otherwise add at the end instead of crashing.
+        final int replaceAt = replaceIndex >= 0 && replaceIndex < rowApps.size() ? replaceIndex : -1;
+        String title = replaceAt < 0 ? Strings.t("Add an app")
+                : String.format(Strings.t("Replace %s"), labelOf(rowApps.get(replaceAt)));
         panel(title, new ArrayList<>(byLabel.keySet()), pos -> fit(pm.getApplicationIcon(pkgs.get(pos)), px(48), px(48)),
                 px(48), -1, null, which -> {
-            if (replaceIndex < 0) rowApps.add(pkgs.get(which));
-            else rowApps.set(replaceIndex, pkgs.get(which));
+            if (replaceAt >= 0 && replaceAt < rowApps.size()) rowApps.set(replaceAt, pkgs.get(which));
+            else if (!rowApps.contains(pkgs.get(which))) rowApps.add(pkgs.get(which));
             saveRow();
             focusedKey = pkgs.get(which);
             buildTiles();
@@ -1632,7 +1630,8 @@ public class MainActivity extends Activity {
             if (!down) {
                 movingKey = null;
                 longPressed = false;
-                ((FrameLayout) tile(key)).setForeground(null);
+                View card = tile(key);
+                if (card != null) ((FrameLayout) card).setForeground(null);
                 moveHint.setVisibility(View.GONE);
                 saveRow();
                 refreshApps();
