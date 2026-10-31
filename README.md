@@ -1,4 +1,12 @@
-> **Fork note:** this copy is being restyled as a CleanFrame-style native launcher for a Google TV. Read [AGENTS.md](AGENTS.md) for agent/session state, [GUIDE.md](GUIDE.md) for setup, install and recovery, and [PROGRESS.md](PROGRESS.md) for what is done and next. The restyle is not built yet.
+> **Fork note:** this copy is a CleanFrame-style restyle of TV Detox, rebuilt natively in plain Java for a Google TV. It is **built and verified on an Android TV 14 emulator**, and is ready to install on the TV. It is not installed yet.
+>
+> ![Restyled home screen](docs/screenshots/home.jpg)
+>
+> **What is different here:** a glass dock with six photo wallpapers, a pre-rendered focus plate, a glass Settings panel, a wallpaper picker, and two Settings toggles (**Show date**, default off; **App labels**, default on). App launching, HDMI inputs, add/move/remove/replace, the clock and the network icon are kept. No runtime blur, no layout animation, no system animation-scale changes.
+>
+> **Read first:** [GUIDE.md](GUIDE.md) for building, installing on the TV, enabling the Home button, the emulator and recovery. [AGENTS.md](AGENTS.md) is the handoff for another model/session. [PROGRESS.md](PROGRESS.md) has the measured results. Asset credits are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+>
+> The rest of this README is upstream TV Detox documentation. Some screenshots, wallpaper text and details describe the original UI; the build in `out/tvhome.apk` is the restyled one described above.
 
 <div align="center">
 

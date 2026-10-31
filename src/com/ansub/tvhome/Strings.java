@@ -13,6 +13,8 @@ final class Strings {
         "Move", "Replace", "Remove from home", "Uninstall", "App info",
         "Use the arrows to move it, then press OK", "Every app is already here", "Add an app", "Replace %s", "Wallpaper", "TV settings", "Brightness",
         "Rename", "Show hidden inputs", "TV", "Laptop", "PC", "Blu-ray", "Soundbar", "Type a name…",
+        "Inputs", "Apps", "Show date", "App labels", "On", "Off", "Apps on Home", "Google TV home",
+        "Enabled", "Disabled", "Not available",
     };
 
     // Keyed by language ("de"), or language-country ("zh-TW") where a country writes it differently.

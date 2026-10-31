@@ -2,12 +2,14 @@
 
 This is the human guide for this fork. For agent/session state read [AGENTS.md](AGENTS.md); for the work log read [PROGRESS.md](PROGRESS.md); for the design mapping read [docs/restyle-plan.md](docs/restyle-plan.md).
 
+![Home screen](docs/screenshots/home.jpg)
+
 ## Where things stand
 
-- **The launcher has not been installed on the TV.**
-- **No Android code has been changed yet.** The design mockups are in [mockups/](mockups/).
+- **The restyled launcher is built and verified on an Android TV 14 emulator.** It has **not** been installed on the TV yet.
+- **`out/tvhome.apk` is ready to install**: signed, 3.6 MB, package `com.ansub.tvhome` 1.5.7, minSdk 21, targetSdk 34.
+- No cleanup has been done on the TV. Google TV's home screen is untouched.
 - A private GitHub copy lives at <https://github.com/raYhanryd/tv-detox-cleanframe>.
-- Build tools are installed inside this project. The **unchanged launcher builds** to `out/tvhome.apk` (signed, 54 KB) but has **not** been installed on the TV.
 
 ## Tools and deleting them
 
@@ -15,16 +17,16 @@ Everything this project installs for development goes in `.tools/` inside this f
 
 | Folder | What it holds | Approx. size |
 | --- | --- | --- |
-| `.tools/jdk-17` | Temurin JDK **17.0.21**, used only by the build | ~300 MB |
-| `.tools/android-sdk` | adb **37.0.1**, platform **34**, build-tools **34.0.0** | ~500 MB |
+| `.tools/jdk-17` | Temurin JDK **17.0.21**, used only by the build | 310 MB |
+| `.tools/android-sdk` | adb **37.0.1**, platform **34**, build-tools **34.0.0**, emulator, Android TV 14 ARM64 image | 9.8 GB |
 | `.tools/android-home` | adb keys/config when the tools honour `ANDROID_USER_HOME` | small |
-| `.tools/avd` | emulator virtual devices, if installed | 1–3 GB |
-| `.tools/venv` | Python + Pillow for generating wallpapers/glass (not created yet) | ~30 MB |
-| `.tools/` **total** | measured on 2026-10-30 | **818 MB now, ~2.5 GB with emulator** |
+| `.tools/avd` | `tv34` emulator (1920×1080 Android TV), | 940 MB |
+| `.tools/venv` | Python + Pillow for generating wallpapers/glass | 22 MB |
+| `.tools/` **total** | measured on 2026-10-31 | **~11 GB** |
 
 Delete the whole `.tools/` folder when you are done; nothing outside it is needed for the build. A tiny `~/.android/adbkey` may still be created by adb (a few KB) and can be deleted separately.
 
-**To remove everything this session added to the computer:** delete `.tools/` (and `~/.android` if you want adb keys gone). The project source, mockups and docs are deliberate files, and the GitHub repo is a copy. Delete this project folder too if you want none of it locally; delete the GitHub repo in its Settings if you want it gone there.
+**To remove everything this session added to the computer:** delete `.tools/` (and `~/.android` if you want adb keys gone). The project source, mockups, screenshots and docs are deliberate files, and the GitHub repo is a copy. Delete this project folder too if you want none of it locally; delete the GitHub repo in its Settings if you want it gone there.
 
 ## Building
 
@@ -35,19 +37,20 @@ The toolchain is installed; one line sets every path:
 sh build.sh
 ```
 
-Verified on 2026-10-30: exit 0, `out/tvhome.apk`, signed with the local `key.jks`, package `com.ansub.tvhome` 1.5.7, minSdk 21, targetSdk 34, 54 KB. It has not been installed anywhere yet.
+Verified on 2026-10-31: exit 0, `out/tvhome.apk`, signed with the local `key.jks`, package `com.ansub.tvhome` 1.5.7, **3.6 MB**. `apksigner verify` and `aapt2 dump badging` pass.
 
 `build.sh` creates `key.jks` on the first build. **Keep `key.jks`**; future updates must be signed with the same key. It is git-ignored, so back it up if you plan to update an installed build from another machine.
 
 ## Putting it on the TV
 
-Do this only after the design is approved and a build has been tested.
+Do this after reading the recovery section. The TV is stock and nothing has been changed on it yet.
 
 1. On the TV: **Settings → Device Preferences → About**, press **Build** seven times. Then **Developer options → USB debugging** (and **Wireless debugging** if present).
 2. Put the Mac and TV on the same Wi-Fi.
 3. For Wireless debugging: TV **Developer options → Wireless debugging → Pair device with pairing code**. On the Mac:
 
    ```sh
+   . tools/env.sh
    adb pair <TV_IP>:<PAIRING_PORT>
    # type the six-digit code
    adb connect <TV_IP>:<DEBUG_PORT>
@@ -55,15 +58,29 @@ Do this only after the design is approved and a build has been tested.
    ```
 
    The debug port changes after a TV restart. Pair and connect again if it drops.
-4. Install the launcher with the repo's installer, which also handles the Home role and offers to turn off the stock launcher:
+4. Install the launcher. `install.sh` uses `out/tvhome.apk`, installs it, sets it as a Home candidate, and leaves Google TV's own launcher on:
 
    ```sh
-   sh install.sh <TV_IP> "com.google.android.youtube.tv,com.netflix.ninja"
-   sh undo.sh <TV_IP>                 # undo the install/home changes
+   sh install.sh <TV_IP_OR_IP:PORT> "com.google.android.youtube.tv,com.netflix.ninja"
    ```
 
-   The installer **does not** turn off Google TV's home screen on Google TV unless explicitly asked (`GOOGLE_TV=1`); this fork will not use that switch. See [Google TV home](#google-tv-home) below.
-5. **Home button on this launcher:** Settings → **Accessibility → Home button** (this app's accessibility service). On Android 11+ sideloaded apps, if the toggle is greyed out, open **Settings → Apps → See all apps → Home → ⋮ → Allow restricted settings** first. Play Protect may warn because the app has an accessibility service.
+   Replace the list with the apps you want on the dock (package names, comma-separated). If you leave the list out, the first launch starts from `apps.txt` and tops up with up to six other installed TV apps; you can remove any of them with the remote. Passing the list makes the dock exact.
+
+   Useful packages (check the TV's own list with `adb shell cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.LEANBACK_LAUNCHER`):
+
+   | App | Package |
+   | --- | --- |
+   | YouTube | `com.google.android.youtube.tv` |
+   | Netflix | `com.netflix.ninja` |
+   | Prime Video | `com.amazon.amazonvideo.livingroom` |
+   | Disney+ | `com.disney.disneyplus` |
+   | Hulu | `com.hulu.livingroomplus` |
+   | Max | `com.wbd.stream` |
+   | Plex | `com.plexapp.android` |
+   | Spotify | `com.spotify.tv.android` |
+   | Apple TV | `com.apple.atve.androidtv.appletv` |
+
+5. **Home button on this launcher:** TV **Settings → Device Preferences → Accessibility → Home button** (the app's accessibility service). On Android 13+ sideloaded apps, if the toggle is greyed out, open **Settings → Apps → See all apps → Home → ⋮ → Allow restricted settings** first. Play Protect may warn because the app has an accessibility service.
 6. If the Accessibility screen freezes, enable the service over adb instead (keeps other services):
 
    ```sh
@@ -79,8 +96,34 @@ Do this only after the design is approved and a build has been tested.
    settings put secure accessibility_enabled 1
    '
    ```
-7. Test Home, Back (hold Back opens Google TV's home), all apps, HDMI inputs, Wi-Fi icon and a reboot.
+7. Test Home, Back (hold Back opens Google TV's home), app launching, HDMI inputs, the Wi-Fi icon, the clock, and a reboot.
 8. **Turn debugging off** when finished: Developer options → USB debugging, Wireless debugging, Network debugging. Left on, other devices on your network can ask to control the TV.
+
+If Home keeps opening Google TV's launcher even after the accessibility service is on, the service did not get enabled (or the TV needs a reboot). See [Recovery](#recovery).
+
+## What the home screen does
+
+- **Dock:** the apps you chose, plus **Add app**. Left/right moves focus; Up reaches Inputs, Apps, Settings and the network icon; Down returns to the dock.
+- **Hold OK** on an app: Move, Replace, Remove from home, and Uninstall (user apps) or App info (system apps). Remove only takes the tile away; the app stays installed.
+- **Add app:** lists every launchable TV app not already on the dock.
+- **Inputs:** HDMI inputs; hold OK to rename or remove one. Removed inputs come back by holding OK on **Add app**.
+- **Apps:** the full app list, including apps not on the dock.
+- **Settings:** Wallpaper, Apps on Home, Inputs, Show date (default Off), App labels (default On), Google TV home, Brightness (on TVs that support it), TV settings.
+- **Clock:** top left, 12/24-hour format follows the TV's existing preference. Show date adds the date underneath.
+- **Wallpaper:** six photos, saved on the TV when you press OK in the picker. Back leaves the current one unchanged.
+- **Hold Back:** opens Google TV's own home screen and stays there until you open **Home** from its apps row or restart the TV. This is the escape hatch if this launcher misbehaves.
+
+## Apps on Home
+
+The dock is a saved list, not every installed app. On the first launch with nothing saved, it starts from the packages in `apps.txt` that are installed, then fills up to six with other installed TV apps. Any change you make with Add/Remove/Move/Replace is saved and becomes the exact list. Apps not on the dock are always available under **Apps**.
+
+To clear and rebuild the list over adb (this resets it to the default seeding):
+
+```sh
+adb shell pm clear com.ansub.tvhome
+```
+
+That also clears the wallpaper and the two toggles.
 
 ## Cleanup (not started)
 
@@ -121,7 +164,19 @@ Then choose, with real numbers:
 2. **Force-stop it after boot.** `adb shell am force-stop com.google.android.apps.tv.launcherx`. Frees it until something restarts it; needs adb after each boot.
 3. **Disable it and re-enable over adb when needed.** This is the option that caused boot loops and factory resets on some Google TVs. Only with a recovery path tested.
 
-The launcher's Settings will have a **Google TV home** row that opens it only when it is installed and enabled. Hold Back on the new home screen is the existing shortcut.
+The launcher's Settings has a **Google TV home** row that opens it when it is installed and enabled, and shows **Disabled** or **Not available** otherwise. Hold Back is the existing shortcut.
+
+## YouTube ads
+
+This launcher cannot block ads in the official YouTube app: it only launches the app, and YouTube stitches ads into the same video streams from the same domains as the video. DNS-level blockers (Pi-hole, NextDNS, AdGuard DNS) generally do not remove them.
+
+The practical options are:
+
+- **YouTube Premium** — the supported, paid way; no ads in the official app.
+- **SmartTube** — a free, open-source Android TV client with ad blocking and SponsorBlock. It is a separate third-party app, not bundled with this launcher and not from the Play Store. Install only from its official GitHub (<https://github.com/yuliskov/SmartTube>) and note the project's security notice: in 2026 its author reported a compromised development machine and reissued builds/keys. Prefer the latest official stable release and check the project page before installing.
+- Do not install "adblock" APKs from random sites; they are a common malware vector on TV.
+
+If SmartTube is installed, it appears under **Apps** and can be added to the dock like any other app.
 
 ## Recovery
 
@@ -136,19 +191,31 @@ The launcher's Settings will have a **Google TV home** row that opens it only wh
 
 ## Emulator
 
-- Apple Silicon needs **ARM64** images. Android TV ARM64 exists for **API 31, 33, 34 and 36**; there is **no Android 11 (API 30) ARM image**. API 33 or 34 is the closest test.
-- All emulator files can live under `.tools/` (`ANDROID_AVD_HOME`, `ANDROID_USER_HOME`, `ANDROID_EMULATOR_HOME`), so deleting `.tools/` removes the emulator, system image and AVDs.
-- The emulator can prove the UI launches, focus works, settings persist and there are no crashes. It cannot prove the ORCA 2K's real GPU frame times or RAM. Those come from the TV.
-- Emulator download is roughly 1.6–2 GB; ask before installing.
+The Android TV 14 ARM64 emulator is installed under `.tools/`. It proves the UI, focus, settings persistence and absence of crashes; it cannot prove the ORCA's real GPU frame times or RAM.
+
+```sh
+. tools/env.sh
+emulator -avd tv34 -no-window -no-audio -no-boot-anim -gpu host -no-snapshot-save
+adb wait-for-device
+adb install -r out/tvhome.apk
+adb shell am start -n com.ansub.tvhome/.MainActivity
+adb exec-out screencap -p > /tmp/tv.png
+```
+
+- **Use `-gpu host` for frame measurements.** `-gpu swiftshader_indirect` gave 100% jank on the same build; host graphics gave 3.7%.
+- The emulator has only a YouTube stub (it shows "YouTube is not supported on this device"), Play Store and Cast. It has no HDMI inputs; use `FAKE_INPUT=1 sh install.sh emulator-5554` only for input-tile testing.
+- Start the emulator as a persistent background process. A timed shell command that ends can kill it.
+- Measured here: **31.7 MB PSS**, 54 frames, 2 janky (3.7%), p50 21 ms, p90 24 ms, p99 38 ms. These are emulator numbers, not the TV's.
+- To remove the emulator and all project tooling, delete `.tools/` (~11 GB).
 
 ## Current design decisions
 
-- Dock layout with a frosted glass panel, pre-rendered per wallpaper.
-- Clock top-left. **Show date** toggle in Settings (default off).
-- **App labels** toggle in Settings: icons + names, or icons only (default names).
+- Dock layout with a frosted glass panel, pre-rendered per wallpaper; 1504×232 at (208, 676), tiles 288×200.
+- Clock top-left. **Show date** toggle (default off).
+- **App labels** toggle: icons + names, or icons only (default names).
 - Top-right: Inputs, Apps, Settings, network status.
-- Six full-quality Unsplash photos with credits; Manrope font (OFL); free-licence brand marks.
-- No system animation scale changes without your choice.
+- Six full-quality Unsplash photos with credits; Manrope font (OFL); no bundled brand icons (the TV supplies app icons).
+- No runtime blur, no layout animations, no system animation-scale changes.
 
 ## Files worth knowing
 
@@ -156,8 +223,11 @@ The launcher's Settings will have a **Google TV home** row that opens it only wh
 | --- | --- |
 | [AGENTS.md](AGENTS.md) | Rules and state for the next AI session |
 | [PROGRESS.md](PROGRESS.md) | What is done, verified and next |
+| [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | Photo, font and project licences |
 | [docs/restyle-plan.md](docs/restyle-plan.md) | Design mapping and limits |
+| [docs/screenshots/](docs/screenshots/) | Final emulator screenshots |
 | [mockups/](mockups/) | Mockups, credits, generator |
 | [docs/debloat.md](docs/debloat.md) | Upstream cleanup rules |
 | [src/com/ansub/tvhome/](src/com/ansub/tvhome/) | The launcher source |
 | `build.sh`, `install.sh`, `undo.sh` | Build and TV lifecycle |
+| `tools/generate_assets.py` | Regenerates shipping wallpaper/glass bitmaps |

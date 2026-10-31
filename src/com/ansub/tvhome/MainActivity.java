@@ -7,6 +7,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -15,6 +16,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -51,10 +53,10 @@ import android.view.animation.Interpolator;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.ScrollView;
 import android.widget.TextClock;
 import android.widget.TextView;
 
@@ -101,6 +103,7 @@ public class MainActivity extends Activity {
     private static final String[] QUICK_LABELS = {"Bluetooth", "Sound", "Picture"};
     private static final int[][] QUICK_ICONS = {LineIcon.BLUETOOTH, LineIcon.SOUND, LineIcon.PICTURE};
     private static final String NETWORK = "network";
+    private static final String INPUTS = "inputs", APPS = "apps";
     private static final int OFFLINE = 0, ETHERNET = 4; // network states; 1 to 3 are Wi-Fi bars
 
     // Saved on the TV: custom input names ("id=name" per line), hidden inputs (one id per line),
@@ -116,48 +119,42 @@ public class MainActivity extends Activity {
     private static final String TCL_SHOW_WINDOW = "com.tcl.settings.SHOW_WINDOW";
 
     // Layout is designed at 1920x1080 and scaled to the TV's real UI size by px().
-    private static final int MARGIN = 96, GAP = 36, RADIUS = 26;
-    // The focus lift: the tile grows, rises, brightens and rounds off a little, then settles.
-    // Long enough to read as motion, short enough that a run of d-pad presses never feels behind.
-    private static final int FOCUS_MS = 180, RADIUS_UP = 10;
+    // The dock geometry is CleanFrame's measured 1080p layout.
+    private static final int RADIUS = 26;
+    private static final int FOCUS_MS = 180;
     private static final Interpolator FOCUS_EASE = new DecelerateInterpolator(1.8f);
-    private static final int ROW1_TOP = 604, ROW_STEP = 224;
-    private static final int GRID_MIN_TOP = 400; // more rows push the grid up, but not into the clock
-    private static final int ICON_TOP = 76, ICON_BUTTON = 72, ICON_SIZE = 40, ICON_GAP = 12; // level with the date
+    private static final int DOCK_X = 208, DOCK_Y = 676, DOCK_W = 1504, DOCK_H = 232, DOCK_PAD = 16;
+    private static final int TILE_W = 288, TILE_H = 200, PITCH = 296, TILE_R = 32;
+    private static final int CONTROL_TOP = 72, CONTROL_RIGHT = 122;
+    private static final int FOCUS_IN_MS = 120, LIFT_MS = 180;
 
-    // The Settings tile opens a small menu: the home screen's own settings, then the TV's.
-    private static final String[] SETTINGS_ITEMS = {"Wallpaper", "Brightness", "TV settings"};
+    // The Settings panel: wallpaper, the home screen's own toggles, then the TV's pages.
+    private static final String PREF_SHOW_DATE = "showdate", PREF_LABELS = "labels";
     // Android TV 11 and later (Google TV too) has no Display page, but its "Display & Sound" page holds Picture.
     private static final String[] TV_DISPLAY_SOUND = {"com.android.tv.settings",
             "com.android.tv.settings.device.displaysound.DisplaySoundActivity"};
-    // Wallpapers, saved by name: a gradient top to bottom, then a glow from the top left and one from
-    // the bottom right. Dark ones first, then bright ones that get darker towards the bottom, so the
-    // white labels stay easy to read. Only colours, no images, so every one costs the same as Dusk,
-    // the default.
-    private static final String[] WALLPAPER_NAMES = {"Dusk", "Midnight", "Plum", "Forest", "Graphite", "Ocean", "Ember",
-            "Sunset", "Lagoon", "Aurora", "Coral", "Iris", "Meadow", "Gold"};
-    private static final int[][] WALLPAPERS = {
-        {0xFF15100F, 0xFF0A0809, 0xFF050405, 0x36FF8048, 0x2EAA3C8C},
-        {0xFF0E1220, 0xFF080A13, 0xFF040509, 0x384A6CFF, 0x2E5A3CC8},
-        {0xFF170E19, 0xFF0C070D, 0xFF050306, 0x38C050B4, 0x2E6440D2},
-        {0xFF0C150F, 0xFF070C09, 0xFF030604, 0x3050B478, 0x28289682},
-        {0xFF151617, 0xFF0B0C0D, 0xFF050506, 0x1CFFFFFF, 0x16A0B4C8},
-        {0xFF0A1517, 0xFF060C0E, 0xFF030607, 0x3426B4C8, 0x2E2A64C0},
-        {0xFF190D08, 0xFF0D0605, 0xFF060303, 0x40FF5A24, 0x32C8283C},
-        {0xFF8C3A5E, 0xFF5E2348, 0xFF22101E, 0xA0FF8A4C, 0x80E0457A},
-        {0xFF14588E, 0xFF15366E, 0xFF0A1632, 0x9030C8E0, 0x807A4CE0},
-        {0xFF0F4048, 0xFF0F2E3A, 0xFF08141C, 0x9038E0A0, 0x90A050F0},
-        {0xFFC0604E, 0xFF8A3456, 0xFF2E1230, 0x90FFB070, 0x70E04090},
-        {0xFF5A3CAE, 0xFF3A2A84, 0xFF16123A, 0x90C080FF, 0x804A7CFF},
-        {0xFF2E6E4C, 0xFF1C4A40, 0xFF0A201E, 0x90A8E070, 0x6030A8A8},
-        {0xFFB07624, 0xFF86401E, 0xFF2A1410, 0x90FFD060, 0x70FF5040},
-    };
+    // The six CleanFrame photographs, bundled at full 1920x1080 quality with credits in
+    // THIRD_PARTY_NOTICES.md. Each has a matching pre-rendered glass dock and settings panel.
+    private static final String[] WALLPAPER_NAMES = {"Misty coast", "Quiet cove", "Forest mist",
+            "Alpine glow", "Golden hour", "Sydney harbour"};
+    private static final int[] WALLPAPER_RES = {R.drawable.wallpaper_0, R.drawable.wallpaper_1,
+            R.drawable.wallpaper_2, R.drawable.wallpaper_3, R.drawable.wallpaper_4, R.drawable.wallpaper_5};
+    private static final int[] DOCK_RES = {R.drawable.dock_0, R.drawable.dock_1, R.drawable.dock_2,
+            R.drawable.dock_3, R.drawable.dock_4, R.drawable.dock_5};
+    private static final int[] PANEL_RES = {R.drawable.panel_0, R.drawable.panel_1, R.drawable.panel_2,
+            R.drawable.panel_3, R.drawable.panel_4, R.drawable.panel_5};
     private float scale = 1f;
 
     private static Typeface regular, semibold;
 
-    private FrameLayout root; // the page, inside a vertical scroller
-    private int tileW, tileH, gridTop; // app grid geometry, set by buildTiles
+    private FrameLayout root;
+    private FrameLayout dock; // the glass panel: one bitmap, no blur at runtime
+    private HorizontalScrollView dockScroll;
+    private LinearLayout dockRow;
+    private LinearLayout controls; // Inputs, Apps, Settings and the network icon, top right
+    private TextClock dateClock;
+    private final List<TextView> dockLabels = new ArrayList<>();
+    private int wallpaperIndex;
     private final List<View> tiles = new ArrayList<>();
     private final Map<View, ValueAnimator> lifts = new WeakHashMap<>(); // a running focus fade per tile
     private boolean dirty = true;
@@ -200,43 +197,20 @@ public class MainActivity extends Activity {
         saveConfig(getIntent());
         loadFonts();
         scale = getResources().getDisplayMetrics().widthPixels / 1920f;
-        showWallpaper(wallpaper());
 
-        ScrollView scroller = new ScrollView(this);
-        scroller.setFillViewport(true);
-        scroller.setVerticalScrollBarEnabled(false);
-        scroller.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        scroller.setClipChildren(false);
+        wallpaperIndex = wallpaper();
+        getWindow().setBackgroundDrawableResource(WALLPAPER_RES[wallpaperIndex]);
         root = new FrameLayout(this);
         root.setClipChildren(false);
-        scroller.addView(root, new FrameLayout.LayoutParams(-1, -2));
+        setContentView(root);
+        buildClock();
+        buildDock();
+        buildControls();
 
-        LinearLayout clock = new LinearLayout(this);
-        clock.setOrientation(LinearLayout.VERTICAL);
-        shownLocale = java.util.Locale.getDefault();
-        String day = Strings.datePattern();
-        TextClock date = clock(day, day, px(30), 0xA8FFFFFF, regular);
-        // The clock follows the TV unless --es clock 12 or 24 says otherwise.
-        String clockPref = prefs().getString(PREF_CLOCK, null);
-        TextClock time = clock("24".equals(clockPref) ? "H:mm" : "h:mm", "12".equals(clockPref) ? "h:mm" : "H:mm",
-                px(176), Color.WHITE, semibold);
-        time.setLetterSpacing(-0.028f);
-        time.setFontFeatureSettings("tnum");
-        time.setIncludeFontPadding(false);
-        // Wrap, not the default match_parent: the column must be as wide as the date, not just the time,
-        // or "0:00" to "9:59" (one digit less) cuts a long date off.
-        clock.addView(date, new LinearLayout.LayoutParams(-2, -2));
-        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2);
-        tp.topMargin = px(-20); // pull the big digits up under the date
-        clock.addView(time, tp);
-        root.addView(clock, at(px(MARGIN), px(92), -2, -2));
-
-        moveHint = text(px(24), 0xA8FFFFFF, regular);
+        moveHint = text(px(24), 0xC8FFFFFF, regular);
         moveHint.setText(Strings.t("Use the arrows to move it, then press OK"));
         moveHint.setVisibility(View.GONE);
-        root.addView(moveHint, at(px(MARGIN), px(ROW1_TOP - 64), -2, -2));
-
-        setContentView(scroller);
+        root.addView(moveHint, at(px(DOCK_X), px(DOCK_Y - 56), -2, -2));
 
         IntentFilter f = new IntentFilter();
         f.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -353,7 +327,10 @@ public class MainActivity extends Activity {
         }
         refreshNetwork();
         View f = getCurrentFocus();
-        if (f == null && !tiles.isEmpty()) tiles.get(0).requestFocus();
+        if (f == null) {
+            View first = rowApps.isEmpty() ? tile(ADD) : tile(rowApps.get(0));
+            if (first != null) first.requestFocus();
+        }
         HomeButton.onHomeResumed(this); // back on this home screen: Home comes here again
         // Only counted as opened once it has stayed up a moment, so a crash right after opening still
         // counts as a failed launch.
@@ -374,8 +351,14 @@ public class MainActivity extends Activity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) refreshApps();
-        else okDownKey = null; // an OK still held finishes in the window that took over
+        if (hasFocus) {
+            refreshApps();
+            // A menu closed: the moving tile must take focus back before the arrows can reorder it.
+            if (movingKey != null) {
+                View card = tile(movingKey);
+                if (card != null) card.requestFocus();
+            }
+        } else okDownKey = null; // an OK still held finishes in the window that took over
     }
 
     // Rebuilds the tiles if apps changed, but only while Home is in front with no menu open and no
@@ -420,159 +403,475 @@ public class MainActivity extends Activity {
         return super.onKeyUp(code, ev);
     }
 
-    // Static gradient, drawn by the window: no extra view, no animation. It's painted once into a
-    // screen-sized picture: as three gradients, low-end GPUs paint it again on every frame of a focus
-    // move, and those frames take two to six times as long (#69). On Android 8+ the picture moves to
-    // the GPU, so the home screen uses no more memory than before; if anything fails, the gradients stay.
-    private Drawable background(int[] c) {
-        GradientDrawable base = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[] {c[0], c[1], c[2]});
-        GradientDrawable top = radial(c[3], 0.08f, -0.12f, px(1250));
-        GradientDrawable bottom = radial(c[4], 1.0f, 1.1f, px(1000));
-        for (GradientDrawable g : new GradientDrawable[] {base, top, bottom}) g.setDither(true);
-        Drawable layers = new LayerDrawable(new Drawable[] {base, top, bottom});
-        int w = getResources().getDisplayMetrics().widthPixels, h = getResources().getDisplayMetrics().heightPixels;
-        try {
-            Bitmap bm = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-            layers.setBounds(0, 0, w, h);
-            layers.draw(new Canvas(bm));
-            if (android.os.Build.VERSION.SDK_INT >= 26) {
-                Bitmap hw = bm.copy(Bitmap.Config.HARDWARE, false);
-                if (hw != null) {
-                    bm.recycle();
-                    bm = hw;
-                }
-            }
-            return new BitmapDrawable(getResources(), bm);
-        } catch (Throwable t) {
-            return layers;
-        }
+    // Time at the top left, in the CleanFrame position. The date is one setting away, off by default.
+    private void buildClock() {
+        LinearLayout clock = new LinearLayout(this);
+        clock.setOrientation(LinearLayout.VERTICAL);
+        shownLocale = java.util.Locale.getDefault();
+        String clockPref = prefs().getString(PREF_CLOCK, null);
+        TextClock time = clock("24".equals(clockPref) ? "H:mm" : "h:mm", "12".equals(clockPref) ? "h:mm" : "H:mm",
+                px(58), Color.WHITE, semibold);
+        time.setLetterSpacing(-0.02f);
+        time.setFontFeatureSettings("tnum");
+        time.setIncludeFontPadding(false);
+        time.setShadowLayer(Math.max(1, px(2)), 0, px(2), 0x66000000);
+        clock.addView(time, new LinearLayout.LayoutParams(-2, -2));
+
+        String day = Strings.datePattern();
+        dateClock = clock(day, day, px(26), 0xB2FFFFFF, regular);
+        dateClock.setIncludeFontPadding(false);
+        dateClock.setShadowLayer(Math.max(1, px(2)), 0, px(2), 0x55000000);
+        LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(-2, -2);
+        dp.topMargin = px(6);
+        clock.addView(dateClock, dp);
+        dateClock.setVisibility(showDate() ? View.VISIBLE : View.GONE);
+        root.addView(clock, at(px(140), px(46), -2, -2));
     }
 
-    // The saved wallpaper, as an index into WALLPAPERS (Dusk if none is saved).
+    // The glass dock: one pre-rendered bitmap, with a scrolling row of focusable tiles on top.
+    private void buildDock() {
+        dock = new FrameLayout(this);
+        dock.setBackgroundResource(DOCK_RES[wallpaperIndex]);
+        root.addView(dock, at(px(DOCK_X), px(DOCK_Y), px(DOCK_W), px(DOCK_H)));
+
+        dockScroll = new HorizontalScrollView(this);
+        dockScroll.setHorizontalScrollBarEnabled(false);
+        dockScroll.setVerticalScrollBarEnabled(false);
+        dockScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        dockScroll.setClipChildren(false);
+        dockScroll.setClipToPadding(false);
+        dockScroll.setFocusable(false);
+        dock.addView(dockScroll, at(px(DOCK_PAD), px(DOCK_PAD),
+                px(DOCK_W - 2 * DOCK_PAD), px(DOCK_H - 2 * DOCK_PAD)));
+
+        dockRow = new LinearLayout(this);
+        dockRow.setOrientation(LinearLayout.HORIZONTAL);
+        dockRow.setClipChildren(false);
+        dockScroll.addView(dockRow, new FrameLayout.LayoutParams(-2, -1));
+    }
+
+    // Inputs, Apps and Settings over the dock, then the live network icon. Up from the dock reaches
+    // them; Back from a panel or a page brings focus back here.
+    private void buildControls() {
+        controls = new LinearLayout(this);
+        controls.setOrientation(LinearLayout.HORIZONTAL);
+        controls.setGravity(Gravity.CENTER_VERTICAL);
+        FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
+        cp.topMargin = px(CONTROL_TOP);
+        cp.rightMargin = px(CONTROL_RIGHT);
+        root.addView(controls, cp);
+
+        addControl(INPUTS, Strings.t("Inputs"), new LineIcon(LineIcon.HDMI), true);
+        addControl(APPS, Strings.t("Apps"), new LineIcon(LineIcon.APPS), true);
+        addControl(SETTINGS, Strings.t("Settings"), new LineIcon(LineIcon.SETTINGS), true);
+        for (int q : quickList())
+            addControl(QUICK + QUICK_NAMES[q], Strings.t(QUICK_LABELS[q]), new LineIcon(QUICK_ICONS[q]), true);
+        netIcon = addControl(NETWORK, Strings.t("Network"), null, false);
+        refreshNetwork();
+    }
+
+    private ImageView addControl(final String key, String label, Drawable icon, boolean withLabel) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(px(14), 0, px(14), 0);
+        card.setFocusable(true);
+        card.setTag(key);
+        card.setContentDescription(label);
+        final GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(px(32));
+        bg.setColor(Color.TRANSPARENT);
+        card.setBackground(bg);
+
+        ImageView iv = new ImageView(this);
+        if (icon != null) iv.setImageDrawable(icon);
+        card.addView(iv, new LinearLayout.LayoutParams(px(30), px(30)));
+        if (withLabel) {
+            TextView t = text(px(28), Color.WHITE, regular);
+            t.setText(label);
+            t.setSingleLine(true);
+            t.setShadowLayer(Math.max(1, px(2)), 0, px(2), 0x66000000);
+            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2);
+            tp.leftMargin = px(10);
+            card.addView(t, tp);
+        }
+        card.setAlpha(0.66f);
+        card.setOnFocusChangeListener((v, has) -> {
+            if (has) focusedKey = key;
+            v.animate().alpha(has ? 1f : 0.66f).setDuration(FOCUS_IN_MS).start();
+            tween(v, bg, has, Color.TRANSPARENT, 0x2AFFFFFF, px(32), px(32));
+        });
+        card.setOnClickListener(v -> open(key));
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, px(64));
+        lp.leftMargin = px(4);
+        controls.addView(card, lp);
+        tiles.add(card);
+        return iv;
+    }
+
+    private boolean showDate() {
+        return prefs().getBoolean(PREF_SHOW_DATE, false);
+    }
+
+    private boolean labelsOn() {
+        return prefs().getBoolean(PREF_LABELS, true);
+    }
+
+    // The saved wallpaper, or the first one for a fresh install (or an old gradient name).
     private int wallpaper() {
         String saved = getSharedPreferences(PREFS, 0).getString("wallpaper", null);
-        return Math.max(0, Arrays.asList(WALLPAPER_NAMES).indexOf(saved));
+        int i = Arrays.asList(WALLPAPER_NAMES).indexOf(saved);
+        return i < 0 ? 0 : i;
     }
 
     private void showWallpaper(int i) {
-        getWindow().setBackgroundDrawable(background(WALLPAPERS[i]));
+        wallpaperIndex = i;
+        getWindow().setBackgroundDrawableResource(WALLPAPER_RES[i]);
+        if (dock != null) dock.setBackgroundResource(DOCK_RES[i]);
     }
 
-    // The wallpapers, each with a small dot of its colours. Moving through the list shows each one
-    // behind the panel; OK keeps it, Back goes back to the one before.
+    // A full-screen dialog with no window dim: the scrim and the pre-rendered glass are inside it,
+    // so the panel and the wallpaper behind it line up exactly.
+    private Dialog glassDialog() {
+        Dialog d = new Dialog(this, android.R.style.Theme_Material_NoActionBar_Fullscreen);
+        Window w = d.getWindow();
+        w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        return d;
+    }
+
+    private FrameLayout glassStage(Dialog d, LinearLayout content) {
+        FrameLayout frame = new FrameLayout(this);
+        ImageView scrim = new ImageView(this);
+        scrim.setBackgroundColor(0x5C080C0E);
+        frame.addView(scrim, new FrameLayout.LayoutParams(-1, -1));
+        ImageView glass = new ImageView(this);
+        glass.setImageResource(PANEL_RES[wallpaperIndex]);
+        glass.setScaleType(ImageView.ScaleType.FIT_XY);
+        frame.addView(glass, at(px(208), px(96), px(1504), px(888)));
+        frame.addView(content, at(px(304), px(176), px(1312), px(728)));
+        d.setContentView(frame);
+        return frame;
+    }
+
+    private TextView heading(String title, String subtitle, LinearLayout box) {
+        TextView head = text(px(46), Color.WHITE, semibold);
+        head.setText(title);
+        head.setIncludeFontPadding(false);
+        box.addView(head);
+        if (subtitle != null) {
+            TextView sub = text(px(21), 0xA8FFFFFF, regular);
+            sub.setText(subtitle);
+            sub.setIncludeFontPadding(false);
+            LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-2, -2);
+            sp.topMargin = px(4);
+            box.addView(sub, sp);
+        }
+        return head;
+    }
+
+    // The wallpaper picker: thumbnails on the left, one real preview on the right. OK applies and
+    // saves; Back leaves the current wallpaper alone.
     private void showWallpapers() {
-        final int size = px(40);
-        panel(Strings.t("Wallpaper"), Arrays.asList(WALLPAPER_NAMES), pos -> {
-            int[] c = WALLPAPERS[pos];
-            GradientDrawable dot = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                    new int[] {glow(c[3], c[0]), c[1], glow(c[4], c[0])});
-            dot.setShape(GradientDrawable.OVAL);
-            dot.setStroke(Math.max(1, px(2)), 0x26FFFFFF);
-            dot.setSize(size, size);
-            return dot;
-        }, size, wallpaper(), this::showWallpaper, which -> {
-            getSharedPreferences(PREFS, 0).edit().putString("wallpaper", WALLPAPER_NAMES[which]).apply();
-            showWallpaper(which);
+        final Dialog d = glassDialog();
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        heading(Strings.t("Wallpaper"), "Saved on this TV, not in the cloud.", box);
+
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, 0, 1f);
+        bp.topMargin = px(30);
+        box.addView(body, bp);
+
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        body.addView(list, new LinearLayout.LayoutParams(px(560), -1));
+
+        final ImageView preview = new ImageView(this);
+        preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        final TextView caption = text(px(28), Color.WHITE, semibold);
+        final Bitmap[] shown = new Bitmap[1];
+
+        LinearLayout right = new LinearLayout(this);
+        right.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(px(640), -1);
+        rp.leftMargin = px(56);
+        body.addView(right, rp);
+        right.addView(preview, new LinearLayout.LayoutParams(px(640), px(360)));
+        LinearLayout.LayoutParams cap = new LinearLayout.LayoutParams(-2, -2);
+        cap.topMargin = px(20);
+        right.addView(caption, cap);
+
+        final View[] rows = new View[WALLPAPER_NAMES.length];
+        for (int i = 0; i < WALLPAPER_NAMES.length; i++) {
+            final int which = i;
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(px(16), 0, px(16), 0);
+            row.setFocusable(true);
+            row.setTag(which);
+            final GradientDrawable rowBg = new GradientDrawable();
+            rowBg.setCornerRadius(px(24));
+            rowBg.setColor(Color.TRANSPARENT);
+            row.setBackground(rowBg);
+
+            final ImageView thumb = new ImageView(this);
+            thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            thumb.setImageBitmap(thumbBitmap(which));
+            row.addView(thumb, new LinearLayout.LayoutParams(px(96), px(54)));
+
+            final TextView name = text(px(27), 0xE6FFFFFF, regular);
+            name.setText(WALLPAPER_NAMES[i]);
+            name.setSingleLine(true);
+            LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-1, -2);
+            np.leftMargin = px(20);
+            row.addView(name, np);
+
+            row.setOnFocusChangeListener((v, has) -> {
+                tween(v, rowBg, has, Color.TRANSPARENT, 0xE6FFFFFF, px(24), px(24));
+                name.setTextColor(has ? 0xFF14171A : 0xE6FFFFFF);
+                v.setAlpha(has ? 1f : 0.94f);
+                if (has) {
+                    Bitmap bm = previewBitmap(which);
+                    preview.setImageBitmap(bm);
+                    if (shown[0] != null) shown[0].recycle();
+                    shown[0] = bm;
+                    caption.setText(WALLPAPER_NAMES[which]);
+                }
+            });
+            row.setOnClickListener(v -> {
+                prefs().edit().putString("wallpaper", WALLPAPER_NAMES[which]).apply();
+                showWallpaper(which);
+                d.dismiss();
+            });
+            list.addView(row, new LinearLayout.LayoutParams(-1, px(72)));
+            rows[i] = row;
+        }
+
+        d.setOnDismissListener(x -> {
+            preview.setImageDrawable(null);
+            if (shown[0] != null) shown[0].recycle();
+            shown[0] = null;
         });
+        glassStage(d, box);
+        d.show();
+        rows[wallpaperIndex].requestFocus();
     }
 
-    // A glow colour made solid over the base, three times as strong, so a small dot shows it.
-    private static int glow(int glow, int base) {
-        float a = Math.min(1f, 3 * (glow >>> 24) / 255f);
-        int r = Math.round(Color.red(base) + (Color.red(glow) - Color.red(base)) * a);
-        int g = Math.round(Color.green(base) + (Color.green(glow) - Color.green(base)) * a);
-        int b = Math.round(Color.blue(base) + (Color.blue(glow) - Color.blue(base)) * a);
-        return Color.rgb(r, g, b);
+    private Bitmap thumbBitmap(int i) {
+        BitmapFactory.Options o = new BitmapFactory.Options();
+        o.inSampleSize = 8;
+        return BitmapFactory.decodeResource(getResources(), WALLPAPER_RES[i], o);
     }
 
-    private static GradientDrawable radial(int color, float cx, float cy, float r) {
-        GradientDrawable g = new GradientDrawable();
-        g.setGradientType(GradientDrawable.RADIAL_GRADIENT);
-        g.setColors(new int[] {color, color & 0x00FFFFFF});
-        g.setGradientCenter(cx, cy);
-        g.setGradientRadius(r);
-        return g;
+    private Bitmap previewBitmap(int i) {
+        BitmapFactory.Options o = new BitmapFactory.Options();
+        o.inSampleSize = 2;
+        return BitmapFactory.decodeResource(getResources(), WALLPAPER_RES[i], o);
+    }
+
+    private static final class Setting {
+        final LinearLayout row;
+        final TextView value;
+        Setting(LinearLayout row, TextView value) { this.row = row; this.value = value; }
+    }
+
+    // One light row in the settings panel. Focus fills it white and darkens the text, as CleanFrame's
+    // selected row does; the value line carries the current state.
+    private Setting setting(LinearLayout parent, String title, String value, final Runnable action) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(px(24), 0, px(20), 0);
+        row.setFocusable(true);
+        final GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(px(24));
+        bg.setColor(Color.TRANSPARENT);
+        row.setBackground(bg);
+
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        texts.setGravity(Gravity.CENTER_VERTICAL);
+        final TextView name = text(px(28), Color.WHITE, regular);
+        name.setText(title);
+        final TextView sub = text(px(18), 0x99FFFFFF, regular);
+        sub.setText(value);
+        texts.addView(name);
+        texts.addView(sub);
+        row.addView(texts, new LinearLayout.LayoutParams(0, -2, 1f));
+        final TextView chevron = text(px(30), 0x99FFFFFF, regular);
+        chevron.setText("\u203A");
+        row.addView(chevron);
+
+        row.setOnFocusChangeListener((v, has) -> {
+            tween(v, bg, has, Color.TRANSPARENT, 0xF2FFFFFF, px(24), px(24));
+            name.setTextColor(has ? 0xFF14171A : Color.WHITE);
+            sub.setTextColor(has ? 0xCC14171A : 0x99FFFFFF);
+            chevron.setTextColor(has ? 0xCC14171A : 0x99FFFFFF);
+        });
+        row.setOnClickListener(v -> action.run());
+        parent.addView(row, new LinearLayout.LayoutParams(-1, px(68)));
+        return new Setting(row, sub);
+    }
+
+    private void showSettings() {
+        final Dialog d = glassDialog();
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        heading(Strings.t("Settings"), "Everything here stays on this TV.", box);
+        LinearLayout rows = new LinearLayout(this);
+        rows.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, 0, 1f);
+        rp.topMargin = px(18);
+        box.addView(rows, rp);
+
+        setting(rows, Strings.t("Wallpaper"), WALLPAPER_NAMES[wallpaperIndex], () -> {
+            d.dismiss();
+            showWallpapers();
+        });
+        setting(rows, Strings.t("Apps on Home"), rowApps.size() == 1 ? "1 app" : rowApps.size() + " apps", () -> {
+            d.dismiss();
+            showAddMenu(-1);
+        });
+        List<TvInputInfo> inputs = hdmiInputs();
+        setting(rows, Strings.t("Inputs"), inputs.isEmpty() ? "None" : inputs.size() + " HDMI", () -> {
+            d.dismiss();
+            showInputs();
+        });
+
+        final Setting date = setting(rows, Strings.t("Show date"), showDate() ? Strings.t("On") : Strings.t("Off"), () -> {});
+        final Runnable toggleDate = () -> {
+            boolean on = !showDate();
+            prefs().edit().putBoolean(PREF_SHOW_DATE, on).apply();
+            date.value.setText(on ? Strings.t("On") : Strings.t("Off"));
+            dateClock.setVisibility(on ? View.VISIBLE : View.GONE);
+        };
+        date.row.setOnClickListener(v -> toggleDate.run());
+
+        final Setting labels = setting(rows, Strings.t("App labels"), labelsOn() ? Strings.t("On") : Strings.t("Off"), () -> {});
+        final Runnable toggleLabels = () -> {
+            boolean on = !labelsOn();
+            prefs().edit().putBoolean(PREF_LABELS, on).apply();
+            labels.value.setText(on ? Strings.t("On") : Strings.t("Off"));
+            for (TextView t : dockLabels) t.setVisibility(on ? View.VISIBLE : View.GONE);
+        };
+        labels.row.setOnClickListener(v -> toggleLabels.run());
+
+        final int tv = googleTvHomeState();
+        setting(rows, Strings.t("Google TV home"), tv == 1 ? Strings.t("Enabled")
+                : tv == 2 ? Strings.t("Disabled") : Strings.t("Not available"), () -> {
+            if (tv == 1) {
+                d.dismiss();
+                HomeButton.openGoogleTv(this);
+            }
+        });
+
+        if (!isBox(this)) setting(rows, Strings.t("Brightness"), Strings.t("TV picture"), () -> {
+            d.dismiss();
+            openBrightness();
+        });
+        setting(rows, Strings.t("TV settings"), "All TV settings", () -> {
+            d.dismiss();
+            openTvSettings();
+        });
+
+        glassStage(d, box);
+        d.show();
+        rows.getChildAt(0).requestFocus();
+    }
+
+    // 1 = installed and enabled, 2 = installed but disabled, 0 = not on this TV.
+    private int googleTvHomeState() {
+        try {
+            ComponentName cn = new ComponentName("com.google.android.apps.tv.launcherx",
+                    "com.google.android.apps.tv.launcherx.home.HomeActivity");
+            ApplicationInfo info = getPackageManager().getApplicationInfo(cn.getPackageName(), 0);
+            if (!info.enabled) return 2;
+            Intent i = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setComponent(cn);
+            return getPackageManager().resolveActivity(i, 0) != null ? 1 : 0;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    // Every launchable app, for the Apps control. The dock stays the home screen; this is the shelf.
+    private void showApps() {
+        final PackageManager pm = getPackageManager();
+        TreeMap<String, String> byLabel = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        for (String category : new String[] {Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER}) {
+            Intent q = new Intent(Intent.ACTION_MAIN).addCategory(category);
+            for (ResolveInfo ri : pm.queryIntentActivities(q, 0)) {
+                String p = ri.activityInfo.packageName;
+                if (p.equals(getPackageName()) || byLabel.containsValue(p)
+                        || (NOT_APPS.contains(p) && !p.equals(PLAY_STORE))) continue;
+                String label = labelOf(p);
+                if (!byLabel.containsKey(label)) byLabel.put(label, p);
+            }
+        }
+        if (byLabel.isEmpty()) {
+            panel(Strings.t("Apps"), Collections.singletonList(Strings.t("Every app is already here")), which -> {});
+            return;
+        }
+        final List<String> pkgs = new ArrayList<>(byLabel.values());
+        panel(Strings.t("Apps"), new ArrayList<>(byLabel.keySet()),
+                pos -> fit(pm.getApplicationIcon(pkgs.get(pos)), px(48), px(48)),
+                px(48), -1, null, which -> open(pkgs.get(which)));
+    }
+
+    // The TV's HDMI inputs, with Rename and Remove from home still on a long OK.
+    private void showInputs() {
+        final List<String> ids = new ArrayList<>();
+        final List<String> labels = new ArrayList<>();
+        for (TvInputInfo in : hdmiInputs()) {
+            ids.add(in.getId());
+            labels.add(inputLabel(in));
+        }
+        final boolean hidden = !hiddenInputs().isEmpty();
+        if (hidden) labels.add(Strings.t("Show hidden inputs"));
+        if (labels.isEmpty()) {
+            panel(Strings.t("Inputs"), Collections.singletonList("No HDMI inputs"), which -> {});
+            return;
+        }
+        panel(Strings.t("Inputs"), labels, pos -> new LineIcon(LineIcon.HDMI), px(42), -1, null, which -> {
+            if (which < ids.size()) openInput(ids.get(which));
+            else showHiddenInputs();
+        }, which -> {
+            if (which < ids.size()) showInputMenu(ids.get(which));
+        });
     }
 
     private void buildTiles() {
         // While tiles are swapped out, removing the focused one would hand focus down the row (and
-        // overwrite focusedKey), so hold focus off until the new tiles are in.
+        // overwrite focusedKey), so hold focus off until the new ones are in.
         String want = focusedKey;
-        int wantAt = rowApps.indexOf(want); // where it was, in case the app is gone now
+        List<String> old = new ArrayList<>(rowApps);
+        int wantAt = old.indexOf(want); // where it was, in case the app is gone now
         root.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
-        for (View t : tiles) {
-            View wrap = (View) t.getParent();
-            ((ViewGroup) wrap.getParent()).removeView(wrap);
-        }
-        tiles.clear();
+        // Clear the dock itself, not just the views this list knows about: a rebuild must never
+        // leave a removed app's tile behind (it would still be focusable and launch).
+        for (View t : new ArrayList<>(tiles)) if (t.getParent() == dockRow) tiles.remove(t);
+        dockRow.removeAllViews();
         rowApps.clear();
+        dockLabels.clear();
         movingKey = null;
         moveHint.setVisibility(View.GONE);
 
         PackageManager pm = getPackageManager();
-        int m = px(MARGIN), g = px(GAP);
-        int w = (getResources().getDisplayMetrics().widthPixels - 2 * m - g * (PER_ROW - 1)) / PER_ROW;
-        int h = w * 9 / 16;
-        tileW = w;
-        tileH = h;
-
-        List<String> apps = appList(pm);
-        // Apps fill rows of six. With more rows the grid starts higher, so up to two rows of apps and
-        // the bottom row still fit on screen; past that the page scrolls.
-        int launchable = 0;
-        for (String pkg : apps) if (launchIntent(pm, pkg) != null) launchable++;
-        int rows = Math.max(1, (launchable + PER_ROW - 1) / PER_ROW);
-        gridTop = Math.max(px(GRID_MIN_TOP), px(ROW1_TOP) - (rows - 1) * px(ROW_STEP));
-        int bottomTop = gridTop + rows * px(ROW_STEP);
-        ((FrameLayout.LayoutParams) moveHint.getLayoutParams()).topMargin = gridTop - px(64);
-        root.setMinimumHeight(bottomTop + h + px(MARGIN));
-
-        for (String pkg : apps) {
-            Intent li = launchIntent(pm, pkg);
-            if (li == null) continue;
-            Drawable banner = null;
-            try {
-                banner = pm.getActivityBanner(li);
-                if (banner == null) banner = pm.getApplicationBanner(pkg);
-            } catch (Exception ignored) {}
+        for (String pkg : appList(pm)) {
+            if (launchIntent(pm, pkg) == null) continue;
             String label = pkg;
-            try { label = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString(); } catch (Exception ignored) {}
-            // Apps without a TV banner get a plain tile with their normal icon.
             Drawable icon = null;
-            if (banner == null) try { icon = pm.getApplicationIcon(pkg); } catch (Exception ignored) {}
-            int i = rowApps.size();
+            try {
+                label = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
+                icon = pm.getApplicationIcon(pkg);
+            } catch (Exception ignored) {}
             rowApps.add(pkg);
-            addTile(root, pkg, label, banner, null, icon, gridX(i), gridY(i), w, h);
+            addDockTile(pkg, label, null, icon);
         }
-
-        // Bottom row: Play Store, HDMI inputs, Settings and Add app, six at most.
-        int col = 0;
-        boolean store = !apps.contains(PLAY_STORE) && launchIntent(pm, PLAY_STORE) != null;
-        List<TvInputInfo> inputs = hdmiInputs();
-        int room = PER_ROW - 2 - (store ? 1 : 0);
-        if (inputs.size() > room) inputs = inputs.subList(0, room);
-        if (store)
-            addTile(root, PLAY_STORE, "Play Store", null, LineIcon.PLAY, null, m + col++ * (w + g), bottomTop, w, h);
-        for (TvInputInfo in : inputs)
-            addTile(root, in.getId(), inputLabel(in), null, LineIcon.HDMI, null, m + col++ * (w + g), bottomTop, w, h);
-        addTile(root, SETTINGS, Strings.t("Settings"), null, LineIcon.SETTINGS, null, m + col++ * (w + g), bottomTop, w, h);
-        addTile(root, ADD, Strings.t("Add app"), null, LineIcon.PLUS, null, m + col * (w + g), bottomTop, w, h);
-
-        // Plain icons at the top right, level with the date: any settings shortcuts picked, then the
-        // network icon. Added last, so the first app keeps first focus; Up from the apps reaches them.
-        List<Integer> quick = quickList();
-        int ib = px(ICON_BUTTON), ig = px(ICON_GAP);
-        // The last icon's right edge lines up with the apps' (its focus circle sticks out past them).
-        int qx = getResources().getDisplayMetrics().widthPixels - m + (ib - px(ICON_SIZE)) / 2
-                - (quick.size() + 1) * ib - quick.size() * ig;
-        for (int q : quick) {
-            addIcon(QUICK + QUICK_NAMES[q], Strings.t(QUICK_LABELS[q]), new LineIcon(QUICK_ICONS[q]), qx);
-            qx += ib + ig;
-        }
-        netIcon = addIcon(NETWORK, Strings.t("Network"), null, qx);
-        netState = -1;
-        refreshNetwork();
+        addDockTile(ADD, Strings.t("Add app"), LineIcon.PLUS, null);
 
         root.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
         // An app that was uninstalled hands focus to the one now in its place, as Remove does.
@@ -583,76 +882,59 @@ public class MainActivity extends Activity {
         if (restore != null) restore.requestFocus();
     }
 
-    private void addTile(ViewGroup parent, final String key, String label, Drawable banner, int[] lineIcon, Drawable appIcon,
-                         int x, int y, int w, int h) {
+    // One tile in the dock: a pre-rendered focus plate fading in, and the icon and name lifting a
+    // little. Everything is a transform or an alpha; no layout work happens while it moves.
+    private void addDockTile(final String key, String label, int[] lineIcon, Drawable appIcon) {
         FrameLayout card = new FrameLayout(this);
-        final GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(px(RADIUS));
-        if (banner != null) {
-            bg.setColor(0xFF1E1A1C);
-            ImageView iv = new ImageView(this);
-            iv.setImageDrawable(fit(banner, w, h));
-            card.addView(iv, new FrameLayout.LayoutParams(-1, -1));
-        } else {
-            // Quiet "glass" tile: icon above label.
-            bg.setColor(0x13FFFFFF);
-            bg.setStroke(Math.max(1, px(2)), 0x17FFFFFF);
-            LinearLayout inner = new LinearLayout(this);
-            inner.setOrientation(LinearLayout.VERTICAL);
-            inner.setGravity(Gravity.CENTER);
-            ImageView iv = new ImageView(this);
-            int size = lineIcon != null ? px(44) : px(64);
-            if (lineIcon != null) iv.setImageDrawable(new LineIcon(lineIcon));
-            else if (appIcon != null) iv.setImageDrawable(fit(appIcon, size, size));
-            inner.addView(iv, new LinearLayout.LayoutParams(size, size));
-            TextView t = text(px(24), 0xE0FFFFFF, regular);
-            t.setText(label);
-            t.setSingleLine(true);
-            t.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            t.setGravity(Gravity.CENTER);
-            t.setPadding(px(16), 0, px(16), 0);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
-            lp.topMargin = px(12);
-            inner.addView(t, lp);
-            card.addView(inner, new FrameLayout.LayoutParams(-1, -1));
-        }
-        card.setBackground(bg);
-        card.setClipToOutline(true);
+        card.setClipChildren(false);
+
+        ImageView plate = new ImageView(this);
+        plate.setImageResource(R.drawable.plate);
+        plate.setScaleType(ImageView.ScaleType.FIT_XY);
+        plate.setAlpha(0f);
+        plate.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        card.addView(plate, new FrameLayout.LayoutParams(-1, -1));
+
+        LinearLayout inner = new LinearLayout(this);
+        inner.setOrientation(LinearLayout.VERTICAL);
+        inner.setGravity(Gravity.CENTER);
+        ImageView iv = new ImageView(this);
+        int size = lineIcon != null ? px(52) : px(96);
+        if (lineIcon != null) iv.setImageDrawable(new LineIcon(lineIcon));
+        else if (appIcon != null) iv.setImageDrawable(fit(appIcon, size, size));
+        inner.addView(iv, new LinearLayout.LayoutParams(size, size));
+
+        TextView name = text(px(27), 0xE6FFFFFF, regular);
+        name.setText(label);
+        name.setSingleLine(true);
+        name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        name.setGravity(Gravity.CENTER);
+        name.setShadowLayer(Math.max(1, px(2)), 0, px(2), 0x5A000000);
+        name.setPadding(px(14), 0, px(14), 0);
+        name.setVisibility(labelsOn() ? View.VISIBLE : View.GONE);
+        LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-2, -2);
+        np.topMargin = px(10);
+        inner.addView(name, np);
+        dockLabels.add(name);
+        card.addView(inner, new FrameLayout.LayoutParams(-1, -1));
+
         card.setFocusable(true);
         card.setTag(key);
-
-        // Banner tiles show their name underneath when focused.
-        final TextView caption = banner == null ? null : text(px(24), Color.WHITE, regular);
-        if (caption != null) {
-            caption.setText(label);
-            caption.setGravity(Gravity.CENTER_HORIZONTAL);
-            caption.setVisibility(View.INVISIBLE);
-        }
-
-        final boolean glass = banner == null;
+        card.setContentDescription(label);
         card.setOnFocusChangeListener((v, has) -> {
             if (has) focusedKey = key;
-            lift(v, bg, has, glass ? 0x13FFFFFF : 0xFF1E1A1C, glass ? 0x38FFFFFF : 0xFF1E1A1C,
-                    px(RADIUS), px(RADIUS + RADIUS_UP));
-            if (caption != null) {
-                caption.animate().cancel();
-                if (has) {
-                    caption.setVisibility(View.VISIBLE);
-                    caption.setAlpha(0f);
-                    caption.animate().alpha(1f).setDuration(FOCUS_MS).setInterpolator(FOCUS_EASE).start();
-                } else {
-                    caption.animate().alpha(0f).setDuration(FOCUS_MS / 2).withEndAction(
-                            () -> caption.setVisibility(View.INVISIBLE)).start();
-                }
-            }
+            plate.animate().cancel();
+            plate.animate().alpha(has ? 1f : 0f).setDuration(FOCUS_IN_MS).start();
+            inner.animate().cancel();
+            inner.animate().translationY(has ? -px(3) : 0f).scaleX(has ? 1.04f : 1f)
+                    .scaleY(has ? 1.04f : 1f).setDuration(LIFT_MS).setInterpolator(FOCUS_EASE)
+                    .withLayer().start();
         });
+
         final boolean editable = rowApps.contains(key);
         card.setOnClickListener(v -> open(key));
         if (editable) card.setOnLongClickListener(v -> { showEditMenu(key); return true; });
-        // What a long OK (or Menu) on this tile opens: the app row's menu, an input's menu, or, on
-        // the + tile, the inputs taken off the home screen.
         final Runnable menu = editable ? () -> showEditMenu(key)
-                : isInput(key) ? () -> showInputMenu(key)
                 : ADD.equals(key) && !hiddenInputs().isEmpty() ? this::showHiddenInputs : null;
         card.setOnKeyListener((v, code, ev) -> {
             boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER
@@ -670,40 +952,32 @@ public class MainActivity extends Activity {
                     okDownKey = key;
                 } else if (menu != null && !longPressed && (ev.isLongPress()
                         || ev.getEventTime() - ev.getDownTime() >= ViewConfiguration.getLongPressTimeout())) {
+                    // Only mark it held. The menu opens on release: if its window appears while OK is
+                    // still down, the key-up would select the first row by itself.
                     longPressed = true;
-                    menu.run();
                 }
             } else {
                 // Only the key-up of an OK that went down on this tile opens the app, and not a cancelled
                 // one (focus left while OK was held). View does the same for a click with isPressed().
                 boolean pressed = key.equals(okDownKey) && !ev.isCanceled();
                 okDownKey = null;
-                if (pressed && !longPressed) open(key);
+                // Some remotes send no repeats while OK is held: a long key-up also means "hold".
+                boolean held = longPressed || ev.getEventTime() - ev.getDownTime()
+                        >= ViewConfiguration.getLongPressTimeout();
+                if (pressed) {
+                    if (held && menu != null) {
+                        longPressed = true;
+                        v.postDelayed(menu, 120);
+                    } else if (!held) open(key);
+                }
             }
             return true;
         });
 
-        FrameLayout wrap = new FrameLayout(this);
-        wrap.setClipChildren(false);
-        wrap.addView(card, new FrameLayout.LayoutParams(w, h));
-        if (caption != null) {
-            FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(w, -2);
-            cp.topMargin = h + px(22);
-            wrap.addView(caption, cp);
-        }
-        parent.addView(wrap, at(x, y, w, -2));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(px(TILE_W), px(TILE_H));
+        lp.rightMargin = px(PITCH - TILE_W);
+        dockRow.addView(card, lp);
         tiles.add(card);
-    }
-
-    // The focus lift: the view grows and rises while its background fades and rounds off. A new
-    // change cancels the fade the view was running, so a fast run of d-pad presses only ever shows
-    // the tile in front and the one it just left mid-move.
-    private void lift(View v, GradientDrawable bg, boolean has, int restColor, int focusColor,
-                      int restRadius, int focusRadius) {
-        v.animate().cancel();
-        v.animate().scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).translationZ(has ? px(26) : 0)
-                .setDuration(FOCUS_MS).setInterpolator(FOCUS_EASE).withLayer().start();
-        tween(v, bg, has, restColor, focusColor, restRadius, focusRadius);
     }
 
     // Just the background part: colour and corner radius, with no view animation. Used for the
@@ -742,49 +1016,19 @@ public class MainActivity extends Activity {
         return Math.round(a + (b - a) * t);
     }
 
-    // An icon on its own, no tile or label: a glass circle shows behind it only while it's focused.
-    private ImageView addIcon(final String key, String label, Drawable icon, int x) {
-        int b = px(ICON_BUTTON), size = px(ICON_SIZE);
-        FrameLayout card = new FrameLayout(this);
-        final GradientDrawable bg = new GradientDrawable();
-        bg.setShape(GradientDrawable.OVAL);
-        bg.setColor(Color.TRANSPARENT);
-        card.setBackground(bg);
-        ImageView iv = new ImageView(this);
-        iv.setImageDrawable(icon);
-        card.addView(iv, new FrameLayout.LayoutParams(size, size, Gravity.CENTER));
-        card.setFocusable(true);
-        card.setTag(key);
-        card.setContentDescription(label);
-        card.setOnFocusChangeListener((v, has) -> {
-            if (has) focusedKey = key;
-            lift(v, bg, has, Color.TRANSPARENT, 0x38FFFFFF, 0, 0);
-        });
-        card.setOnClickListener(v -> open(key));
-        FrameLayout wrap = new FrameLayout(this);
-        wrap.setClipChildren(false);
-        wrap.addView(card, new FrameLayout.LayoutParams(b, b));
-        root.addView(wrap, at(x, px(ICON_TOP), b, b));
-        tiles.add(card);
-        return iv;
-    }
-
     private void open(String key) {
         Intent i;
         if (ADD.equals(key)) {
             showAddMenu(-1);
             return;
         } else if (SETTINGS.equals(key)) {
-            // A box has no screen of its own to dim: its picture is the TV's, on the TV's remote. On NVIDIA
-            // Shield, Brightness also fell back to a Display & Sound page that's listed but missing there.
-            List<String> list = new ArrayList<>(Arrays.asList(SETTINGS_ITEMS));
-            if (isBox(this)) list.remove("Brightness");
-            final String[] items = list.toArray(new String[0]);
-            dropdown(tile(SETTINGS), items, which -> {
-                if ("Wallpaper".equals(items[which])) showWallpapers();
-                else if ("Brightness".equals(items[which])) openBrightness();
-                else openTvSettings();
-            });
+            showSettings();
+            return;
+        } else if (INPUTS.equals(key)) {
+            showInputs();
+            return;
+        } else if (APPS.equals(key)) {
+            showApps();
             return;
         } else if (isInput(key)) {
             openInput(key);
@@ -964,9 +1208,15 @@ public class MainActivity extends Activity {
 
     interface Pick { void at(int which); }
     interface Icon { Drawable at(int which) throws Exception; }
+    interface Hold { void at(int which); }
 
     private void panel(String title, List<String> labels, Pick pick) {
         panel(title, labels, null, 0, -1, null, pick);
+    }
+
+    private void panel(String title, final List<String> labels, final Icon icon, final int size,
+                       final int selected, final Pick preview, final Pick pick) {
+        panel(title, labels, icon, size, selected, preview, pick, null);
     }
 
     // A side panel in the home screen's own look: a title, then one row per choice, with the same
@@ -974,7 +1224,7 @@ public class MainActivity extends Activity {
     // With preview, the list starts on selected and moving through it calls preview; Back calls it
     // with selected again, to put things back.
     private void panel(String title, final List<String> labels, final Icon icon, final int size,
-                       final int selected, final Pick preview, final Pick pick) {
+                       final int selected, final Pick preview, final Pick pick, final Hold hold) {
         final Dialog d = new Dialog(this, android.R.style.Theme_Material_Dialog_NoActionBar);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
@@ -1022,6 +1272,11 @@ public class MainActivity extends Activity {
         list.setOnItemClickListener((parent, v, pos, id) -> {
             d.dismiss();
             pick.at(pos);
+        });
+        if (hold != null) list.setOnItemLongClickListener((parent, v, pos, id) -> {
+            d.dismiss();
+            hold.at(pos);
+            return true;
         });
         if (preview != null) {
             list.setSelection(selected);
@@ -1132,12 +1387,12 @@ public class MainActivity extends Activity {
         });
     }
 
-    // Hold OK on an HDMI tile: name it after the box plugged into it, or take it off the home
-    // screen. Hiding keeps the input in the TV's list, so nothing about the TV changes.
+    // Hold OK on an input: name it after the box plugged into it, or take it off the home screen.
+    // Hiding keeps the input in the TV's list, so nothing about the TV changes.
     private void showInputMenu(final String id) {
-        View anchor = tile(id);
-        if (anchor == null) return;
-        dropdown(anchor, new String[] {"Rename", "Remove from home"}, which -> {
+        TvInputInfo in = inputById(id);
+        panel(in == null ? Strings.t("Inputs") : inputLabel(in),
+                Arrays.asList("Rename", "Remove from home"), which -> {
             if (which == 0) showInputNames(id);
             else hideInput(id);
         });
@@ -1162,7 +1417,7 @@ public class MainActivity extends Activity {
                 return;
             }
             setInputName(id, which == 0 ? null : names.get(which));
-            focusedKey = id;
+            focusedKey = INPUTS;
             buildTiles();
         });
     }
@@ -1191,7 +1446,7 @@ public class MainActivity extends Activity {
         Runnable save = () -> {
             setInputName(id, name.getText().toString());
             dialog.dismiss();
-            focusedKey = id;
+            focusedKey = INPUTS;
             buildTiles();
         };
         name.setOnEditorActionListener((v, action, event) -> {
@@ -1229,7 +1484,7 @@ public class MainActivity extends Activity {
         Set<String> hidden = hiddenInputs();
         hidden.add(id);
         saveHiddenInputs(hidden);
-        focusedKey = ADD;
+        focusedKey = INPUTS;
         buildTiles();
     }
 
@@ -1248,7 +1503,7 @@ public class MainActivity extends Activity {
             Set<String> now = hiddenInputs();
             now.remove(ids.get(which));
             saveHiddenInputs(now);
-            focusedKey = ids.get(which);
+            focusedKey = INPUTS;
             buildTiles();
         });
     }
@@ -1337,52 +1592,39 @@ public class MainActivity extends Activity {
         getSharedPreferences(PREFS, 0).edit().putString("apps", android.text.TextUtils.join(",", rowApps)).apply();
     }
 
-    // Where app number i sits in the grid.
-    private int gridX(int i) {
-        return px(MARGIN) + (i % PER_ROW) * (tileW + px(GAP));
-    }
-
-    private int gridY(int i) {
-        return gridTop + (i / PER_ROW) * px(ROW_STEP);
-    }
-
     private View tile(String key) {
         for (View t : tiles) if (t.getTag().equals(key)) return t;
         return null;
     }
 
-    // Move mode: the tile gets an outline, the arrows move it through the grid, OK or Back finishes.
+    // Move mode: the tile gets an outline, left/right move it along the dock, OK or Back finishes.
     private void startMove(String key) {
         View card = tile(key);
         if (card == null) return;
         movingKey = key;
         GradientDrawable outline = new GradientDrawable();
-        outline.setCornerRadius(px(RADIUS));
+        outline.setCornerRadius(px(TILE_R));
         outline.setStroke(px(4), Color.WHITE);
         ((FrameLayout) card).setForeground(outline);
         moveHint.setVisibility(View.VISIBLE);
-        card.requestFocus();
+        card.post(card::requestFocus);
     }
 
     private boolean moveKey(String key, int code, boolean ok, boolean down) {
-        int step = code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1
-                : code == KeyEvent.KEYCODE_DPAD_UP ? -PER_ROW : code == KeyEvent.KEYCODE_DPAD_DOWN ? PER_ROW : 0;
+        int step = code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : 0;
         if (step != 0) {
             int from = rowApps.indexOf(key), to = from + step;
             if (down && to >= 0 && to < rowApps.size()) {
-                // Slide the tiles into their new places: no rebuild, so it stays quick on slow TVs.
                 rowApps.add(to, rowApps.remove(from));
-                for (int i = Math.min(from, to); i <= Math.max(from, to); i++) {
-                    View wrap = (View) tile(rowApps.get(i)).getParent();
-                    FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) wrap.getLayoutParams();
-                    lp.leftMargin = gridX(i);
-                    lp.topMargin = gridY(i);
-                    wrap.setLayoutParams(lp);
-                }
-                // Scroll along with it once it has moved.
-                final View card = tile(key);
-                card.post(() -> card.requestRectangleOnScreen(
-                        new android.graphics.Rect(0, 0, card.getWidth(), card.getHeight())));
+                // Reorder the existing views: one layout pass, no rebuild and no lost focus.
+                View card = tile(key);
+                dockRow.removeView(card);
+                dockRow.addView(card, to);
+                // Removing the focused view drops focus; take it back before the next key arrives.
+                card.post(() -> {
+                    card.requestFocus();
+                    dockScroll.smoothScrollTo(Math.max(0, card.getLeft() - px(200)), 0);
+                });
             }
             return true;
         }
@@ -1497,11 +1739,23 @@ public class MainActivity extends Activity {
         return i != null ? i : pm.getLaunchIntentForPackage(pkg);
     }
 
-    // Xiaomi TVs ship MiLan Pro but don't register it by name; every other TV gets Roboto.
-    private static void loadFonts() {
+    // Manrope (SIL OFL) ships with the app so the TV gets the intended typeface. If loading fails,
+    // fall back to the system face, then to Xiaomi's MiLan Pro on TVs that register it by name.
+    private void loadFonts() {
         if (regular != null) return;
-        regular = fromFile("/system/fonts/MILanPro_Normal.ttf", Typeface.create("sans-serif", Typeface.NORMAL));
-        semibold = fromFile("/system/fonts/MILanPro_SemiBold.ttf", Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        try {
+            regular = Typeface.createFromAsset(getAssets(), "fonts/Manrope-Variable.ttf");
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                Typeface bold = new Typeface.Builder(getAssets(), "fonts/Manrope-Variable.ttf")
+                        .setFontVariationSettings("'wght' 600").build();
+                semibold = bold != null ? bold : Typeface.create(regular, Typeface.BOLD);
+            } else {
+                semibold = Typeface.create(regular, Typeface.BOLD);
+            }
+        } catch (Throwable t) {
+            regular = fromFile("/system/fonts/MILanPro_Normal.ttf", Typeface.create("sans-serif", Typeface.NORMAL));
+            semibold = fromFile("/system/fonts/MILanPro_SemiBold.ttf", Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        }
     }
 
     private static Typeface fromFile(String path, Typeface fallback) {
