@@ -106,7 +106,7 @@ Do not commit `out/`, `key.jks`, `.tools/`, `.android/`. `key.jks` is generated 
 - **Dock:** `HorizontalScrollView` + `LinearLayout`; focus scrolls the row. Rebuilds clear the row with `dockRow.removeAllViews()` (a targeted removal once left a stale, focusable tile behind; do not regress this).
 - **Settings:** Wallpaper, Apps on Home, Inputs, Show date, App labels, Google TV home (enabled/disabled/not available), Brightness (non-box TVs), TV settings. The two toggles update immediately and persist in `config` prefs.
 - **Wallpaper picker:** six thumbnails + half-res preview; OK saves, Back keeps the current one.
-- **Apps on Home:** the dock is the saved `apps` pref. A first launch with no saved value seeds from `apps.txt` (filtered to installed, launchable apps) and tops up with up to six other installed TV apps. Once anything is saved, the dock follows the saved list exactly. All installed apps remain available from the **Apps** top control.
+- **Apps on Home:** the dock is the saved `apps` pref. A first launch with no saved value seeds from `apps.txt` (filtered to installed, launchable apps), then fills the row with other installed TV apps until there are six. Once anything is saved, the dock follows the saved list exactly. All installed apps remain available from the **Apps** top control.
 - **Font:** Manrope variable from `assets/fonts` (OFL); falls back to the TV's sans-serif.
 
 ## Verification (2026-10-31)

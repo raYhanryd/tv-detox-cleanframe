@@ -64,7 +64,7 @@ Do this after reading the recovery section. The TV is stock and nothing has been
    sh install.sh <TV_IP_OR_IP:PORT> "com.google.android.youtube.tv,com.netflix.ninja"
    ```
 
-   Replace the list with the apps you want on the dock (package names, comma-separated). If you leave the list out, the first launch starts from `apps.txt` and tops up with up to six other installed TV apps; you can remove any of them with the remote. Passing the list makes the dock exact.
+   Replace the list with the apps you want on the dock (package names, comma-separated). If you leave the list out, the first launch starts from `apps.txt` and fills the row with other installed TV apps until there are six; you can remove any of them with the remote. Passing the list makes the dock exact.
 
    Useful packages (check the TV's own list with `adb shell cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.LEANBACK_LAUNCHER`):
 
