@@ -7,11 +7,16 @@
 #   CLOCK=24 sh install.sh <TV_IP>               24-hour clock (12, 24, or auto for the TV's own)
 #   FAKE_INPUT=1 sh install.sh <emulator>        testing only: add a throwaway TV input, so an
 #                                                emulator with no HDMI ports still has one to draw
+#   DISABLE_STOCK_HOME=1 sh install.sh <TV_IP>   offer to turn the TV's own home screen off
+#                                                (not needed: the accessibility service routes Home)
 #
-# On Google TV (Chromecast with Google TV and others) the TV's own home screen is left on.
-# GOOGLE_TV=1 turns it off anyway; only do that if you can reconnect over USB or port 5555.
+# The TV's own home screen is NEVER turned off by this script unless DISABLE_STOCK_HOME=1 is set:
+# Home is routed by the Home button accessibility service instead (see GUIDE.md). On a Google TV,
+# turning its home screen off also needs GOOGLE_TV=1, and only with a way back in over USB or
+# port 5555.
 #
-# Uses out/tvhome.apk if you built it, otherwise downloads the latest release.
+# Installs out/tvhome.apk. Build it first with `sh build.sh`; this fork never downloads a prebuilt
+# app, because that would install upstream TV Detox instead of this home screen.
 set -e
 cd "$(dirname "$0")"
 
@@ -40,9 +45,24 @@ esac
 
 APK=out/tvhome.apk
 if [ ! -f "$APK" ]; then
-  APK=$(mktemp -d)/tvhome.apk
-  echo "Downloading the home screen…"
-  curl -fsSL -o "$APK" https://github.com/Ansub/tv-detox/releases/latest/download/tvhome.apk
+  echo "out/tvhome.apk is missing, and this fork never downloads a prebuilt app." >&2
+  echo "That download would install upstream TV Detox, not this home screen." >&2
+  echo "Build it first:" >&2
+  echo "  . tools/env.sh" >&2
+  echo "  sh build.sh" >&2
+  exit 1
+fi
+# Refuse a build older than its source, so the TV never gets yesterday's app.
+newer=$(find src res assets AndroidManifest.xml build.sh -newer "$APK" -print 2>/dev/null | head -5)
+if [ -n "$newer" ]; then
+  echo "out/tvhome.apk is older than the source:" >&2
+  printf '%s\n' "$newer" | sed 's/^/  /' >&2
+  if [ "$ALLOW_STALE" = 1 ]; then
+    echo "Installing it anyway because ALLOW_STALE=1." >&2
+  else
+    echo "Run 'sh build.sh' first (or ALLOW_STALE=1 to install it anyway)." >&2
+    exit 1
+  fi
 fi
 
 echo "Installing… If your TV shows a Google Play Protect message, follow it on the TV to allow the install."
@@ -92,7 +112,12 @@ home_opens_me() {
   case "$1" in
     "$ME") return 0 ;;
     org.droidtv.homeintentresolver/*) ;;
-    *) return 1 ;;
+    *)
+      # On Android 10+ the HOME role is what Home follows, while resolve-activity can still name
+      # a higher-priority stock launcher (seen on the Android TV 14 emulator). If the role is
+      # ours, Home opens this home screen.
+      sh_tv cmd role get-role-holders android.app.role.HOME 2>/dev/null | grep -Fqx com.ansub.tvhome && return 0
+      return 1 ;;
   esac
   sh_tv am start -W -a android.settings.SETTINGS >/dev/null 2>&1 || return 1
   away=
@@ -106,7 +131,9 @@ home_opens_me() {
   done
   [ -n "$away" ] || return 1
   sh_tv input keyevent KEYCODE_HOME >/dev/null 2>&1 || return 1
-  for _try in 1 2 3 4 5; do
+  # A cold start of the home screen can take a few seconds on a 2 GB TV, so wait longer than a
+  # warm switch would need before calling it a failure.
+  for _try in 1 2 3 4 5 6 7 8 9 10 11 12; do
     sleep 1
     front=$(foreground)
     case "$front" in
@@ -121,6 +148,8 @@ if [ "$(sh_tv getprop ro.build.version.sdk)" -ge 29 ]; then
   sh_tv cmd role add-role-holder --user 0 android.app.role.HOME com.ansub.tvhome >/dev/null 2>&1 || true
 fi
 sh_tv cmd package set-home-activity "$ME" >/dev/null 2>&1 || true
+# The role service applies this after a moment; resolving too soon can still name the old home.
+sleep 2
 
 # Known TV home screens that are safe to turn off.
 LAUNCHERS="com.google.android.tvlauncher com.google.android.apps.tv.launcherx com.google.android.leanbacklauncher
@@ -172,15 +201,23 @@ installed() { sh_tv pm list packages "$1" 2>/dev/null | grep -Fqx "package:$1"; 
 google_tv=
 # Google TV's own home screen is what makes it Google TV. Android TV has the setup app too.
 if installed "$LAUNCHERX"; then google_tv=1; fi
-may_turn_off=1
-if [ -n "$google_tv" ] && [ "$GOOGLE_TV" != 1 ]; then
-  may_turn_off=
-  if [ "$(current_home)" != "$ME" ]; then
-    echo "This is a Google TV, so its own home screen stays on."
-    echo "Turning it off has left some Google TVs (like Chromecast) stuck restarting."
-    echo "The new home screen is installed, but Home keeps opening Google TV's. The cleanup still works."
-    echo "Only if you can reconnect to this TV over USB or port 5555, run again with GOOGLE_TV=1."
+# Keeping the TV's own home screen is the default. Home is routed by the Home button
+# accessibility service (GUIDE.md); nothing is disabled for it. Only DISABLE_STOCK_HOME=1 offers
+# to turn a stock home screen off instead.
+may_turn_off=
+if [ "$DISABLE_STOCK_HOME" = 1 ]; then
+  may_turn_off=1
+  if [ -n "$google_tv" ] && [ "$GOOGLE_TV" != 1 ]; then
+    may_turn_off=
+    if [ "$(current_home)" != "$ME" ]; then
+      echo "This is a Google TV, so its own home screen stays on."
+      echo "Turning it off has left some Google TVs (like Chromecast) stuck restarting."
+      echo "Only if you can reconnect to this TV over USB or port 5555, run again with GOOGLE_TV=1."
+    fi
   fi
+elif [ "$(current_home)" != "$ME" ]; then
+  echo "Your TV's own home screen stays on; nothing on the TV is turned off."
+  echo "If Home doesn't open this home screen, turn on the Home button accessibility service (GUIDE.md)."
 fi
 home_apps() { sh_tv cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.HOME 2>/dev/null \
   | grep / | sed 's|/.*||; s/^ *//' | sort -u; }
@@ -322,5 +359,11 @@ elif [ -n "$reverted" ]; then
 elif [ "${winner%%/*}" = org.droidtv.homeintentresolver ]; then
   echo "Home didn't reach the new home screen through Philips' Home router; run undo.sh to turn the TV's own home screen back on."
 else
-  echo "Installed, but your TV still opens its own home screen. If it asks which home screen to use, pick \"Home\" and choose Always."
+  echo "Installed, but your TV still opens its own home screen."
+  if [ -z "$may_turn_off" ]; then
+    echo "That is expected: the TV's own home screen was kept on. Turn on the Home button"
+    echo "accessibility service (GUIDE.md) and Home will open this home screen."
+  else
+    echo "If it asks which home screen to use, pick \"Home\" and choose Always."
+  fi
 fi
