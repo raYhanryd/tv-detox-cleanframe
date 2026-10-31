@@ -26,8 +26,11 @@
         <package android:name="com.android.tv.settings" />
         <!-- Google TV's HDMI input player, so HDMI tiles can see when the TV sends HDMI to it. -->
         <package android:name="com.google.android.tv.inputplayer" />
-        <!-- Google TV's own home screen, which HomeButton opens when Back is held. -->
+        <!-- The stock home screens HomeButton watches and opens when Back is held: Google TV's,
+             Android TV 9-11's, and the older leanback launcher. -->
         <package android:name="com.google.android.apps.tv.launcherx" />
+        <package android:name="com.google.android.tvlauncher" />
+        <package android:name="com.google.android.leanbacklauncher" />
     </queries>
     <!-- Lets "Uninstall" in the app menu open Android's uninstall prompt. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />

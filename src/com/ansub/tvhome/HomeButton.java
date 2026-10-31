@@ -5,6 +5,9 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.os.Build;
 import android.os.SystemClock;
 import android.provider.Settings;
@@ -15,19 +18,30 @@ import android.view.accessibility.AccessibilityEvent;
 // switching it off puts Home straight back to the TV's own.
 //
 // Google TV handles the Home key before accessibility services see it, so this doesn't watch keys.
-// It watches for Google TV's main screen (not its other pages) to open, after Home or a restart,
-// and opens this one over it.
+// It watches for the stock home screen to open, after Home or a restart, and opens this one over it.
+// It knows all three stock launchers: Google TV's (launcherx), Android TV 9-11's (tvlauncher) and
+// the older leanback launcher. Only each package's own HOME activity is watched, so Google TV's
+// other pages (Apps, Settings) are left alone.
 public class HomeButton extends AccessibilityService {
-    private static final ComponentName GOOGLE_TV_HOME = new ComponentName(
-            "com.google.android.apps.tv.launcherx", "com.google.android.apps.tv.launcherx.home.HomeActivity");
+    // Stock home screen packages, newest first. THE SAME ORDER as KNOWN_HOME below.
+    private static final String[] STOCK_PACKAGES = {
+            "com.google.android.apps.tv.launcherx",
+            "com.google.android.tvlauncher",
+            "com.google.android.leanbacklauncher"};
+    // Fallbacks for when the package manager can't resolve a package's HOME activity.
+    private static final String[] KNOWN_HOME = {
+            "com.google.android.apps.tv.launcherx.home.HomeActivity",
+            "com.google.android.tvlauncher.MainActivity",
+            "com.google.android.leanbacklauncher.MainActivity"};
+    static final int HOME_ENABLED = 1, HOME_DISABLED = 2, HOME_MISSING = 0;
     // Debounce duplicate events until the activity resumes.
     private static long lastOpened = -500;
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
-                || !GOOGLE_TV_HOME.getPackageName().equals(String.valueOf(event.getPackageName()))
-                || !GOOGLE_TV_HOME.getClassName().equals(String.valueOf(event.getClassName())) || !setupDone()) return;
+                || !isStockHome(String.valueOf(event.getPackageName()),
+                        String.valueOf(event.getClassName())) || !setupDone()) return;
         SharedPreferences prefs = prefs(this);
         if (stayingOnGoogleTv(prefs)) return;
         long now = SystemClock.elapsedRealtime();
@@ -90,15 +104,58 @@ public class HomeButton extends AccessibilityService {
         return Math.abs(bootTime() - prefs.getLong("google_tv_boot", 0)) < 5000;
     }
 
-    // Opens Google TV's own home screen and keeps it there. False if this TV doesn't have it.
+    // The stock home activity installed on this TV, or null when there is none. Read-only: nothing
+    // is enabled, disabled or started here.
+    static ComponentName stockHome(Context c) {
+        PackageManager pm = c.getPackageManager();
+        for (String pkg : STOCK_PACKAGES) {
+            try {
+                if (!pm.getApplicationInfo(pkg, 0).enabled) continue;
+            } catch (Exception e) {
+                continue;
+            }
+            Intent i = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setPackage(pkg);
+            ResolveInfo ri = pm.resolveActivity(i, PackageManager.MATCH_DEFAULT_ONLY);
+            if (ri != null && ri.activityInfo != null) return new ComponentName(pkg, ri.activityInfo.name);
+        }
+        return null;
+    }
+
+    // For the Settings row. HOME_ENABLED when a stock home can be opened, HOME_DISABLED when one is
+    // installed but turned off, HOME_MISSING when this TV has none of them.
+    static int stockHomeState(Context c) {
+        if (stockHome(c) != null) return HOME_ENABLED;
+        for (String pkg : STOCK_PACKAGES) {
+            try {
+                if (!c.getPackageManager().getApplicationInfo(pkg, 0).enabled) return HOME_DISABLED;
+            } catch (Exception ignored) {}
+        }
+        return HOME_MISSING;
+    }
+
+    // True only for a stock package's own HOME activity.
+    private boolean isStockHome(String pkg, String cls) {
+        for (int i = 0; i < STOCK_PACKAGES.length; i++) {
+            if (!STOCK_PACKAGES[i].equals(pkg)) continue;
+            Intent i2 = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setPackage(pkg);
+            ResolveInfo ri = getPackageManager().resolveActivity(i2, PackageManager.MATCH_DEFAULT_ONLY);
+            String home = ri != null && ri.activityInfo != null ? ri.activityInfo.name : KNOWN_HOME[i];
+            return home.equals(cls);
+        }
+        return false;
+    }
+
+    // Opens the TV's own home screen and keeps it there. False if this TV doesn't have one.
     static boolean openGoogleTv(Context c) {
+        ComponentName home = stockHome(c);
+        if (home == null) return false;
         SharedPreferences prefs = prefs(c);
         // Keep the choice through process death and updates, but not a TV restart.
         if (!prefs.edit().putLong("google_tv_boot", bootTime())
                 .putInt("google_tv_boot_count", bootCount(c)).commit()) return false;
         try {
             c.startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-                    .setComponent(GOOGLE_TV_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    .setComponent(home).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             return true;
         } catch (Exception e) {
             prefs.edit().remove("google_tv_boot").remove("google_tv_boot_count").commit();
