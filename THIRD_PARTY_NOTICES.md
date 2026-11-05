@@ -38,7 +38,16 @@ The pre-rendered dock glass (`dock_*.png`), settings glass (`panel_*.png`) and f
 
 ## App icons and brand marks
 
-The launcher does **not** bundle app icons or brand logos. It asks Android's `PackageManager` for each installed app's own icon at runtime, so YouTube, Netflix, Plex, Spotify and other marks remain the property of their owners and are supplied by the installed apps. Brand names and marks are trademarks of their owners; this project claims no affiliation or endorsement.
+The launcher ships a small set of **white vector brand marks** for known TV apps, used on the dock when that package is on the home screen:
+
+| Shipped file | Source | Licence |
+| --- | --- | --- |
+| `res/drawable/logo_netflix.xml`, `logo_youtube.xml`, `logo_spotify.xml`, `logo_stremio.xml`, `logo_appletv.xml`, `logo_youtubemusic.xml` | [Simple Icons](https://simpleicons.org/) | **CC0 1.0 Universal** for the SVG artwork; the brand marks remain trademarks of their owners |
+| `res/drawable/logo_primevideo.xml` | Cropped from [File:Amazon Prime Video logo.svg](https://commons.wikimedia.org/wiki/File:Amazon_Prime_Video_logo.svg) on Wikimedia Commons (historical 2018 mark) | **Public domain** as a simple text/shape logo (PD-textlogo); Amazon's trademark rights still apply |
+
+The marks are used only to identify apps the owner already installed. Brand names and marks are trademarks of their owners; this project claims no affiliation or endorsement.
+
+For any package without a bundled mark, the launcher asks Android's `PackageManager` for the installed app's own icon at runtime, so that app's mark remains the property of its owner and is supplied by the installed app.
 
 The mockups under `mockups/` use Simple Icons (CC0), CleanFrame's Prime Video adaptation and its Disney+ drawing; those are design files and are credited in [mockups/CREDITS.md](mockups/CREDITS.md), not shipped in the APK.
 

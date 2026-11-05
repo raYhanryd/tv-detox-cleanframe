@@ -6,8 +6,9 @@ This is the human guide for this fork. For agent/session state read [AGENTS.md](
 
 ## Where things stand
 
-- **The restyled launcher is built and verified on an Android TV 14 emulator.** It has **not** been installed on the TV yet.
-- **`out/tvhome.apk` is ready to install**: signed, 3.6 MB, package `com.ansub.tvhome` 1.5.7, minSdk 21, targetSdk 34.
+- **1.5.8 is built and verified on an Android TV 14 emulator**: white monochrome dock marks and icon-only Inputs/Apps/Settings controls.
+- **The ORCA has 1.5.7 installed**, with the Home button service verified. **1.5.8 is not installed yet** because the TV was offline on 2026-11-05; reconnect and rerun the install.
+- **`out/tvhome.apk` is ready to install**: signed, 3.6 MB, package `com.ansub.tvhome` 1.5.8 (21), minSdk 21, targetSdk 34.
 - No cleanup has been done on the TV. Google TV's home screen is untouched.
 - The public GitHub copy lives at <https://github.com/raYhanryd/tv-detox-cleanframe>.
 - No APK is committed. Build `out/tvhome.apk` locally; `install.sh` only installs that file and refuses a build older than its source.
@@ -38,13 +39,13 @@ The toolchain is installed; one line sets every path:
 sh build.sh
 ```
 
-Verified on 2026-10-31: exit 0, `out/tvhome.apk`, signed with the local `key.jks`, package `com.ansub.tvhome` 1.5.7, **3.6 MB**. `apksigner verify` and `aapt2 dump badging` pass.
+Verified on 2026-11-05: exit 0, `out/tvhome.apk`, signed with the local `key.jks`, package `com.ansub.tvhome` 1.5.8 (21), **3,779,577 bytes**. `apksigner verify` and `aapt2 dump badging` pass.
 
 `build.sh` creates `key.jks` on the first build. **Keep `key.jks`**; future updates must be signed with the same key. It is git-ignored, so back it up if you plan to update an installed build from another machine.
 
 ## Putting it on the TV
 
-Do this after reading the recovery section. The TV is stock and nothing has been changed on it yet.
+Do this after reading the recovery section. The ORCA has 1.5.7 installed; 1.5.8 is an in-place update. No package has been disabled and the TV's own home screen is on.
 
 1. On the TV: **Settings → Device Preferences → About**, press **Build** seven times. Then **Developer options → USB debugging** (and **Wireless debugging** if present).
 2. Put the Mac and TV on the same Wi-Fi.
@@ -67,10 +68,10 @@ Do this after reading the recovery section. The TV is stock and nothing has been
    ```
 
    ```sh
-   sh install.sh <TV_IP_OR_IP:PORT> "com.google.android.youtube.tv,com.netflix.ninja"
+   sh install.sh <TV_IP_OR_IP:PORT> "com.netflix.ninja,com.google.android.youtube.tv,com.spotify.tv.android,com.amazon.amazonvideo.livingroom,com.stremio.one"
    ```
 
-   Replace the list with the apps you want on the dock (package names, comma-separated). If you leave the list out, the first launch starts from `apps.txt` and fills the row with other installed TV apps until there are six; you can remove any of them with the remote. Passing the list makes the dock exact.
+   That is the owner's order: Netflix, YouTube, Spotify, Prime Video, Stremio. The dock keeps it. Replace the list with the apps you want on the dock (package names, comma-separated). If you leave the list out, the first launch starts from `apps.txt` and fills the row with other installed TV apps until there are six; you can remove any of them with the remote. Passing the list makes the dock exact.
 
    Useful packages (check the TV's own list with `adb shell cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.LEANBACK_LAUNCHER`):
 
@@ -79,14 +80,17 @@ Do this after reading the recovery section. The TV is stock and nothing has been
    | YouTube | `com.google.android.youtube.tv` |
    | Netflix | `com.netflix.ninja` |
    | Prime Video | `com.amazon.amazonvideo.livingroom` |
+   | Spotify | `com.spotify.tv.android` |
+   | Stremio | `com.stremio.one` |
+   | Apple TV | `com.apple.atve.androidtv.appletv` |
+   | YouTube Music | `com.google.android.youtube.tvmusic` |
+   | Hotstar | `in.startv.hotstar` |
    | Disney+ | `com.disney.disneyplus` |
    | Hulu | `com.hulu.livingroomplus` |
    | Max | `com.wbd.stream` |
    | Plex | `com.plexapp.android` |
-   | Spotify | `com.spotify.tv.android` |
-   | Apple TV | `com.apple.atve.androidtv.appletv` |
 
-5. **Home button on this launcher:** TV **Settings → Device Preferences → Accessibility → Home button** (the app's accessibility service). It works with Google TV's launcher (`launcherx`), Android TV 9–11's (`tvlauncher`) and the older leanback launcher, without disabling any of them. On Android 13+ sideloaded apps, if the toggle is greyed out, open **Settings → Apps → See all apps → Home → ⋮ → Allow restricted settings** first. Play Protect may warn because the app has an accessibility service.
+5. **Home button on this launcher:** TV **Settings → Device Preferences → Accessibility → Home button** (the app's accessibility service). It works with Google TV's launcher (`launcherx`), Android TV 9–11's (`tvlauncher`) and the older leanback launcher, without disabling any of them. On Android 13+ sideloaded apps, if the toggle is greyed out, open **Settings → Apps → See all apps → Home → ⋮ → Allow restricted settings** first. Play Protect may warn because the app has an accessibility service. On the ORCA, 1.5.7's service was enabled and Home was verified; after a 1.5.8 update check the toggle again. Its Android 11 build does not support `cmd role get-role-holders`, so `install.sh` may warn that Home still opens the TV's own screen; ignore that line if Home works — the accessibility service is the route.
 6. If the Accessibility screen freezes, enable the service over adb instead (keeps other services):
 
    ```sh
@@ -102,19 +106,19 @@ Do this after reading the recovery section. The TV is stock and nothing has been
    settings put secure accessibility_enabled 1
    '
    ```
-7. Test Home, Back (hold Back opens Google TV's home), app launching, HDMI inputs, the Wi-Fi icon, the clock, and a reboot.
+7. Test Home, Back (hold Back opens Google TV's home), app launching, HDMI inputs, the Wi-Fi icon, the clock, and a reboot. The five dock apps show white marks (unknown apps keep their own icon). The top-right **Inputs / Apps / Settings** are icons only; from the dock, Right to **Add app**, Up to **Inputs**, then Right → **Apps** → **Settings** → OK. This is the tested path after the labels were removed.
 8. **Turn debugging off** when finished: Developer options → USB debugging, Wireless debugging, Network debugging. Left on, other devices on your network can ask to control the TV.
 
 If Home keeps opening Google TV's launcher even after the accessibility service is on, the service did not get enabled (or the TV needs a reboot). See [Recovery](#recovery).
 
 ## What the home screen does
 
-- **Dock:** the apps you chose, plus **Add app**. Left/right moves focus; Up reaches Inputs, Apps, Settings and the network icon; Down returns to the dock.
+- **Dock:** the apps you chose, plus **Add app**. Known packages show white brand marks; other apps keep their own icon. Left/right moves focus; Up from the rightmost **Add app** reaches Inputs, Apps, Settings and the network icon; Down returns to the dock.
 - **Hold OK** on an app: Move, Replace, Remove from home, and Uninstall (user apps) or App info (system apps). Remove only takes the tile away; the app stays installed.
 - **Add app:** lists every launchable TV app not already on the dock.
 - **Inputs:** HDMI inputs; hold OK to rename or remove one. Removed inputs come back by holding OK on **Add app**.
 - **Apps:** the full app list, including apps not on the dock.
-- **Settings:** Wallpaper, Apps on Home, Inputs, Show date (default Off), App labels (default On), Google TV home, Brightness (on TVs that support it), TV settings.
+- **Settings:** Wallpaper, Apps on Home, Inputs, Show date (default Off), App labels (default On), Google TV home, Brightness (on TVs that support it), TV settings. The top-right Inputs/Apps/Settings controls are icon-only.
 - **Clock:** top left, 12/24-hour format follows the TV's existing preference. Show date adds the date underneath.
 - **Wallpaper:** six photos, saved on the TV when you press OK in the picker. Back leaves the current one unchanged.
 - **Hold Back:** opens Google TV's own home screen and stays there until you open **Home** from its apps row or restart the TV. This is the escape hatch if this launcher misbehaves.
@@ -175,7 +179,7 @@ The launcher's Settings has a **Google TV home** row that opens it when it is in
 
 ## YouTube ads
 
-This launcher cannot block ads in the official YouTube app: it only launches the app, and YouTube stitches ads into the same video streams from the same domains as the video. DNS-level blockers (Pi-hole, NextDNS, AdGuard DNS) generally do not remove them.
+This launcher cannot block ads in the official YouTube app: it only launches the app, and YouTube stitches ads into the same video streams from the same domains as the video. DNS-level blockers (Pi-hole, NextDNS, AdGuard DNS) generally do not remove them. As of 2026-11-05, no ad blocker or SmartTube was installed: the ORCA was offline. Nothing is bundled.
 
 The practical options are:
 
@@ -188,6 +192,7 @@ If SmartTube is installed, it appears under **Apps** and can be added to the doc
 ## Recovery
 
 - **Home opens the wrong thing:** Settings → Accessibility → **Home button** off. Or uninstall this launcher.
+- **`install.sh` warns Home still opens the TV's own screen on the ORCA:** its Android 11 does not support `cmd role get-role-holders`. Ignore that line; check that **Home button** is on and press Home. The accessibility service is the working route.
 - **Back to the stock home:** hold Back opens whichever stock home screen the TV has. The **Google TV home** row in Settings does the same and reads *Enabled*, *Disabled* or *Not available*.
 - **Uninstall the launcher:** `adb uninstall com.ansub.tvhome`.
 - **Restore the stock home and remove this one:** `sh undo.sh <TV_IP>`.
@@ -211,9 +216,9 @@ adb exec-out screencap -p > /tmp/tv.png
 ```
 
 - **Use `-gpu host` for frame measurements.** `-gpu swiftshader_indirect` gave 100% jank on the same build; host graphics gave 3.7%.
-- The emulator has only a YouTube stub (it shows "YouTube is not supported on this device"), Play Store and Cast. It has no HDMI inputs; use `FAKE_INPUT=1 sh install.sh emulator-5554` only for input-tile testing.
+- The emulator has only a YouTube stub (it shows "YouTube is not supported on this device"), Play Store and Cast. It has no HDMI inputs; use `FAKE_INPUT=1 sh install.sh emulator-5554` only for input-tile testing. The five-logo screenshot used temporary packages with the real Netflix/Spotify/Prime/Stremio package names; they were uninstalled, and the saved list is back to `com.google.android.youtube.tv`.
 - Start the emulator as a persistent background process. A timed shell command that ends can kill it.
-- Measured here: **31.7 MB PSS**, 54 frames, 2 janky (3.7%), p50 21 ms, p90 24 ms, p99 38 ms. These are emulator numbers, not the TV's.
+- Measured here on 1.5.7: **31.7 MB PSS**, 54 frames, 2 janky (3.7%), p50 21 ms, p90 24 ms, p99 38 ms. 1.5.8 adds only vector drawables and was not re-measured. These are emulator numbers, not the TV's.
 - To remove the emulator and all project tooling, delete `.tools/` (~11 GB).
 
 ## Current design decisions
@@ -221,8 +226,8 @@ adb exec-out screencap -p > /tmp/tv.png
 - Dock layout with a frosted glass panel, pre-rendered per wallpaper; 1504×232 at (208, 676), tiles 288×200.
 - Clock top-left. **Show date** toggle (default off).
 - **App labels** toggle: icons + names, or icons only (default names).
-- Top-right: Inputs, Apps, Settings, network status.
-- Six full-quality Unsplash photos with credits; Manrope font (OFL); no bundled brand icons (the TV supplies app icons).
+- Top-right: icon-only Inputs, Apps and Settings, plus network status and optional quick shortcuts.
+- Six full-quality Unsplash photos with credits; Manrope font (OFL); white vector marks for known packages (Simple Icons CC0; Prime Video from Wikimedia public domain), other apps use their own icon.
 - No runtime blur, no layout animations, no system animation-scale changes.
 
 ## Files worth knowing

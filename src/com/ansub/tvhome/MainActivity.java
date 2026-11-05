@@ -469,9 +469,9 @@ public class MainActivity extends Activity {
         cp.rightMargin = px(CONTROL_RIGHT);
         root.addView(controls, cp);
 
-        addControl(INPUTS, Strings.t("Inputs"), new LineIcon(LineIcon.HDMI), true);
-        addControl(APPS, Strings.t("Apps"), new LineIcon(LineIcon.APPS), true);
-        addControl(SETTINGS, Strings.t("Settings"), new LineIcon(LineIcon.SETTINGS), true);
+        addControl(INPUTS, Strings.t("Inputs"), new LineIcon(LineIcon.HDMI), false);
+        addControl(APPS, Strings.t("Apps"), new LineIcon(LineIcon.APPS), false);
+        addControl(SETTINGS, Strings.t("Settings"), new LineIcon(LineIcon.SETTINGS), false);
         for (int q : quickList())
             addControl(QUICK + QUICK_NAMES[q], Strings.t(QUICK_LABELS[q]), new LineIcon(QUICK_ICONS[q]), true);
         netIcon = addControl(NETWORK, Strings.t("Network"), null, false);
@@ -858,12 +858,20 @@ public class MainActivity extends Activity {
             if (launchIntent(pm, pkg) == null) continue;
             String label = pkg;
             Drawable icon = null;
+            int iconW = 0, iconH = 0;
+            int[] logo = brandLogo(pkg);
             try {
                 label = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
-                icon = pm.getApplicationIcon(pkg);
+                if (logo != null) {
+                    icon = getResources().getDrawable(logo[0]);
+                    iconW = logo[1];
+                    iconH = logo[2];
+                } else {
+                    icon = pm.getApplicationIcon(pkg);
+                }
             } catch (Exception ignored) {}
             rowApps.add(pkg);
-            addDockTile(pkg, label, null, icon);
+            addDockTile(pkg, label, null, icon, iconW, iconH);
         }
         addDockTile(ADD, Strings.t("Add app"), LineIcon.PLUS, null);
 
@@ -876,9 +884,29 @@ public class MainActivity extends Activity {
         if (restore != null) restore.requestFocus();
     }
 
+    // Monochrome brand marks for apps people put on the home row. Each entry is
+    // {drawable, width, height} in 1920-design pixels; no entry means use the app's own icon.
+    private static int[] brandLogo(String pkg) {
+        switch (pkg) {
+            case "com.netflix.ninja": return new int[] {R.drawable.logo_netflix, 88, 88};
+            case "com.google.android.youtube.tv": return new int[] {R.drawable.logo_youtube, 96, 96};
+            case "com.spotify.tv.android": return new int[] {R.drawable.logo_spotify, 88, 88};
+            case "com.amazon.amazonvideo.livingroom": return new int[] {R.drawable.logo_primevideo, 150, 88};
+            case "com.stremio.one": return new int[] {R.drawable.logo_stremio, 84, 84};
+            case "com.apple.atve.androidtv.appletv": return new int[] {R.drawable.logo_appletv, 96, 96};
+            case "com.google.android.youtube.tvmusic": return new int[] {R.drawable.logo_youtubemusic, 88, 88};
+            default: return null;
+        }
+    }
+
+    private void addDockTile(String key, String label, int[] lineIcon, Drawable appIcon) {
+        addDockTile(key, label, lineIcon, appIcon, 0, 0);
+    }
+
     // One tile in the dock: a pre-rendered focus plate fading in, and the icon and name lifting a
     // little. Everything is a transform or an alpha; no layout work happens while it moves.
-    private void addDockTile(final String key, String label, int[] lineIcon, Drawable appIcon) {
+    private void addDockTile(final String key, String label, int[] lineIcon, Drawable appIcon,
+                             int iconW, int iconH) {
         FrameLayout card = new FrameLayout(this);
         card.setClipChildren(false);
 
@@ -893,10 +921,20 @@ public class MainActivity extends Activity {
         inner.setOrientation(LinearLayout.VERTICAL);
         inner.setGravity(Gravity.CENTER);
         ImageView iv = new ImageView(this);
-        int size = lineIcon != null ? px(52) : px(96);
-        if (lineIcon != null) iv.setImageDrawable(new LineIcon(lineIcon));
-        else if (appIcon != null) iv.setImageDrawable(fit(appIcon, size, size));
-        inner.addView(iv, new LinearLayout.LayoutParams(size, size));
+        int sizeW = lineIcon != null ? px(52) : iconW > 0 ? px(iconW) : px(96);
+        int sizeH = lineIcon != null ? px(52) : iconH > 0 ? px(iconH) : px(96);
+        if (lineIcon != null) {
+            iv.setImageDrawable(new LineIcon(lineIcon));
+        } else if (appIcon != null) {
+            if (iconW > 0) {
+                // A bundled white brand mark: keep its own proportions, no crop or bitmap copy.
+                iv.setImageDrawable(appIcon);
+                iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            } else {
+                iv.setImageDrawable(fit(appIcon, sizeW, sizeH));
+            }
+        }
+        inner.addView(iv, new LinearLayout.LayoutParams(sizeW, sizeH));
 
         TextView name = text(px(27), 0xE6FFFFFF, regular);
         name.setText(label);

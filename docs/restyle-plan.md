@@ -1,6 +1,6 @@
 # Restyling the home screen after CleanFrame
 
-**Status: implemented and verified on the emulator (2026-10-31). Not yet installed on the TV.**
+**Status: implemented and verified on the emulator (2026-11-05). 1.5.7 is installed on the ORCA; 1.5.8 (white dock marks, icon-only top controls) is not installed yet because the TV was offline.**
 
 The mapping below is kept as the design record. Where the shipped build differs from the original proposal, the difference is called out.
 
@@ -15,11 +15,11 @@ The mapping below is kept as the design record. Where the shipped build differs 
 | CleanFrame element | What was built |
 | --- | --- |
 | Full-bleed photograph, top shade + bottom scrim | Six 1920×1080 JPEGs with the shade and scrim baked in by `tools/generate_assets.py`. One window background, no overlay views. |
-| Dock: 1504×232 at (208, 676), 288×200 tiles, 296 pitch, 48px panel, 32px plate | Same geometry, laid out at 1920×1080 and scaled by screen width. |
+| Dock: 1504×232 at (208, 676), 288×200 tiles, 296 pitch, 48px panel, 32px plate | Same geometry, laid out at 1920×1080 and scaled by screen width. Known packages use white vector marks; other apps use their own icon. |
 | Glass material rendered ahead of time | Per-wallpaper frosted dock pane (blur 28 + veil, rounded corners baked in) and settings pane (blur 42). Runtime only decodes a bitmap; no blur. |
 | Focused tile plate | Pre-rendered `plate.png`, white at 24% alpha. Alpha 0→1 over 120 ms; icon and label lift 3 dp and scale 1.04 over 180 ms with `withLayer()`. No relayout. |
 | Clock at top left | `TextClock`, following the TV's existing 12/24 preference. **Show date** (default off) adds a second line. |
-| Art Mode / All apps / Settings top right | Inputs / Apps / Settings, then the live Wi-Fi/Ethernet/offline icon. Up from the dock reaches them, Back returns. |
+| Art Mode / All apps / Settings top right | Inputs / Apps / Settings, **icons only**, then the live Wi-Fi/Ethernet/offline icon. From the dock, Right to Add app and Up reaches Inputs; Right walks Apps → Settings → network. Back returns. |
 | Dock scrolls left/right | Horizontal scrolling with focus, via `HorizontalScrollView`. It uses scroll transforms, not a bespoke `translationX` animation, so no layout runs during movement. |
 | Settings sheet over the blurred stage | A pre-rendered glass panel: Wallpaper, Apps on Home, Inputs, Show date, App labels, Google TV home, Brightness (non-box TVs), TV settings. |
 | Wallpaper picker | Two panes: six thumbnails on the left, half-res preview on the right. OK applies and saves; Back keeps the current wallpaper. |
@@ -40,7 +40,7 @@ The mapping below is kept as the design record. Where the shipped build differs 
 
 - **Live blur.** Android 11 has no cheap backdrop blur and the project rules it out. Every panel is pre-rendered per wallpaper; changing wallpaper swaps the background and dock pane together.
 - **Pixel-identical CSS.** Gradients, easing and letter spacing are close, not identical.
-- **Brand marks.** The launcher does not bundle brand icons; Android supplies each installed app's icon. This avoids stale or trademark-encumbered marks, but some TV app icons are low-resolution.
+- **Brand marks.** The launcher ships white vector marks for seven known TV packages and falls back to the installed app's icon for everything else. Marks can go stale if a brand changes; a new package needs a vector drawable and a `brandLogo` entry. The marks are trademarks; see notices.
 - **Shelf edge fades and overscroll.** Native clipping shows a partially visible tile instead of a CSS mask fade.
 - **Settings depth.** CleanFrame's per-group two-pane appearance screens are simplified to one panel and one picker.
 - **60 fps guarantee.** The app avoids layout and blur on the animation path; the real frame times must be measured on the ORCA.
@@ -60,7 +60,7 @@ Measured on the Android TV 14 API 34 emulator with host GPU:
 | Frame percentiles | p50 **21 ms**, p90 **24 ms**, p99 **38 ms** |
 | Missed vsync / slow UI thread | 0 / 0 |
 
-The original estimate of ~39–40 MB assumed a full-screen ARGB wallpaper plus a second crossfade copy. The shipped build has no crossfade duplicate and keeps one wallpaper, so the measured total is lower. Expect the TV's numbers to differ; measure them there.
+The original estimate of ~39–40 MB assumed a full-screen ARGB wallpaper plus a second crossfade copy. The shipped build has no crossfade duplicate and keeps one wallpaper, so the measured total is lower. Expect the TV's numbers to differ; measure them there. The 1.5.8 changes add seven small vector drawables; memory was not re-measured.
 
 Animation rules: transform/alpha only; `withLayer()` while a tile moves; no `requestLayout` in listeners; wallpaper and glass decoded before being shown; no runtime blur; no new views per frame.
 
@@ -70,7 +70,7 @@ Mockup assets are in `mockups/` with credits in [CREDITS.md](../mockups/CREDITS.
 
 - **Fonts:** Manrope (SIL OFL 1.1), variable TTF, licence text bundled at `assets/fonts/Manrope-OFL.txt`. Geist and Newsreader are not bundled.
 - **Photos:** the six approved Unsplash photographs, bundled at 1920×1080 with a baked top shade and bottom scrim, with credits. The Unsplash licence allows copying, modification and distribution with restrictions (no selling unmodified images; no competing image service).
-- **Icons:** no brand icons are shipped. Mockup credits (Simple Icons CC0, Custom Brand Icons MIT) apply only to the mockups.
+- **Icons:** seven white vector marks are shipped for known packages (`res/drawable/logo_*.xml`): Simple Icons CC0 for Netflix, YouTube, Spotify, Stremio, Apple TV and YouTube Music; Prime Video cropped from Wikimedia's public-domain `Amazon Prime Video logo.svg` (trademark Amazon). Other apps use their installed icons. Mockup credits (Simple Icons CC0, Custom Brand Icons MIT) still apply to the mockups.
 - **Code:** CleanFrame is MIT; only measurements and design ideas are used, no Tizen code.
 
 ## Bloatware cleanup (later, with approval)
@@ -110,7 +110,7 @@ Everything lives in `.tools/` and nothing was installed system-wide:
 - Android emulator 37.2.13, `system-images;android-34;android-tv;arm64-v8a`, AVD `tv34` at 1920×1080
 - Pillow in `.tools/venv` for asset generation
 
-`.tools/` is ~11 GB because of the system image. Delete the folder to remove all of it. `. tools/env.sh` sets the paths. `sh build.sh` writes a signed 3.6 MB `out/tvhome.apk`; `-A assets` packages the wallpapers, dock/panel panes and Manrope. No Gradle, no new Java libraries.
+`.tools/` is ~11 GB because of the system image. Delete the folder to remove all of it. `. tools/env.sh` sets the paths. `sh build.sh` writes a signed 3,779,577-byte `out/tvhome.apk` (1.5.8); `-A assets` packages the wallpapers, dock/panel panes and Manrope. No Gradle, no new Java libraries.
 
 ## Recovery before anything risky
 
@@ -127,4 +127,4 @@ Everything lives in `.tools/` and nothing was installed system-wide:
 3. **Photos:** six approved Unsplash photos at full quality, with credits.
 4. **Repo:** public GitHub <https://github.com/raYhanryd/tv-detox-cleanframe>. Upstream remains read-only. The APK is built locally and is not committed.
 5. **Emulator:** installed project-locally, used for verification, removable with `.tools/`.
-6. **YouTube ads:** no blocker bundled; SmartTube documented as a separate optional install.
+6. **YouTube ads:** no blocker bundled; the official app cannot be ad-blocked by this launcher. SmartTube is documented as a separate optional install and was not installed on 2026-11-05 (TV offline).
