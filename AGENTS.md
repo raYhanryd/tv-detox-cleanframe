@@ -10,24 +10,26 @@ Owner's TV: **ORCA 2K Google TV**, Android TV OS 11 (API 30), stock, 2 GB-class 
 
 Remote: `https://github.com/raYhanryd/tv-detox-cleanframe` (public). Upstream remote is `origin` (Ansub/tv-detox). **Never push to `origin`.** The owner's remote is `mine`.
 
-## Current phase (2026-11-05)
+## Current phase (2026-11-06)
 
-**1.5.8 adds white brand logos and icon-only top controls and is emulator-verified. The ORCA has 1.5.7 installed with Home routing verified; 1.5.8 is not on the TV because it was offline on 2026-11-05. No TV cleanup has been done.**
+**1.5.9 fixes the missing Prime Video arrow, adds AirScreen and Google Play Store white marks, a soft dock focus tick, and full-resolution anti-aliased dock/settings glass. It is emulator-verified. The ORCA still has 1.5.7 with Home routed; 1.5.9 is not installed because the TV is still offline. No TV cleanup has been done.**
 
-- **TV state:** the ORCA (Google TV, Android 11, 1280×720) had 1.5.7 installed on 2026-10-31. Its stock launcher is `com.google.android.apps.tv.launcherx`. The Home button accessibility service was enabled and Home returned to `com.ansub.tvhome`. **The TV's Android 11 build does not support `cmd role get-role-holders`**, so `install.sh` cannot verify the HOME role there; the accessibility service is the working route.
-- **TV connection:** last seen at `192.168.8.187:5555`. On 2026-11-05 `adb connect` returned `No route to host` and `adb devices` was empty. Reconnect before installing 1.5.8.
+- **TV state:** the ORCA (Google TV, Android 11, 1280×720) has 1.5.7 installed. Its stock launcher is `com.google.android.apps.tv.launcherx`. The Home button accessibility service was enabled and Home returned to `com.ansub.tvhome`. **The TV's Android 11 build does not support `cmd role get-role-holders`**, so `install.sh` cannot verify the HOME role there; the accessibility service is the working route.
+- **TV connection:** last seen at `192.168.8.187:5555`. On 2026-11-06 `adb connect` still returned `No route to host`; `adb devices` listed only `emulator-5554`. Reconnect before installing 1.5.9.
 - The restyle is implemented: glass dock, six wallpapers, Settings panel and wallpaper picker, Show date and App labels toggles, Google TV home row.
-- **1.5.8 dock:** white vector marks for Netflix, YouTube, Spotify, Prime Video, Stremio, Apple TV and YouTube Music; other packages keep their own icon. `brandLogo()` supplies each mark's design size; the tile keeps its proportions (no bitmap crop). The Prime Video mark is cropped from the public-domain Wikimedia `Amazon Prime Video logo.svg` (trademark Amazon); the rest are Simple Icons CC0.
+- **1.5.9 dock:** nine white marks. Prime Video now includes the source's separate arrow-head path; 1.5.8 used only the smile path. AirScreen (`com.ionitech.airscreen`) is a white transparent 512×322 PNG traced from the official Play Store icon; Google Play Store (`com.android.vending`) uses the Simple Icons CC0 `googleplay` path. `brandLogo()` supplies each mark's design size; the tile keeps its proportions (no bitmap crop). Other packages keep their own icon. The Prime shape is from the public-domain Wikimedia `Amazon Prime Video logo.svg` (trademark Amazon).
+- **1.5.9 focus sound:** `res/raw/hover.wav` (75 ms, 44.1 kHz mono) plays through `SoundPool` on dock focus at 0.30 volume. It is silent for the first 450 ms after `onResume` so launching Home is quiet, and the pool is released in `onDestroy`. The emulator runs `-no-audio`; no logcat audio errors, but the sound has not been heard yet. Needs the TV.
+- **1.5.9 glass:** dock/panel PNGs are now the full 1504×232 / 1504×888 design size with a 4× anti-aliased rounded mask, no runtime blur; `plate.png` stays 2× at 576×400. The dock label shadow was reduced from 2 px to 1 px. Version 1.5.9 (22).
 - **1.5.8 top controls:** Inputs, Apps and Settings are icon-only, matching the reference. The fourth network icon is kept. Dock labels remain and follow the App labels setting; optional quick shortcuts keep their labels.
-- `out/tvhome.apk` is signed, 3,779,577 bytes, package `com.ansub.tvhome` 1.5.8 (21), minSdk 21, targetSdk 34. Verified with `apksigner`, `aapt2` and `zipalign`; SHA-256 `99ae738a1c61a88e3ef79b2def659e50e0ebc28f35533bdf5d39615919b5dbf7`.
+- `out/tvhome.apk` is signed, 4,680,923 bytes, package `com.ansub.tvhome` 1.5.9 (22), minSdk 21, targetSdk 34. Verified with `apksigner`, `aapt2` and `zipalign`; SHA-256 `8d63beff28d70a69b6746dced04f1949d90221114dcad0269767412720fb93ac`.
 - **Home routing now supports all three stock launchers:** `com.google.android.apps.tv.launcherx` (Google TV), `com.google.android.tvlauncher` (Android TV 9–11) and `com.google.android.leanbacklauncher`. Confirmed on the emulator, whose stock home is `tvlauncher`: with the service off, Home opens `tvlauncher`; with it on, Home opens this launcher. Hold Back opens `tvlauncher` and stays there (no redirect loop).
 - **The Settings row reads the real stock launcher** and showed *Enabled* and *Disabled* correctly when `tvlauncher` was enabled and temporarily disabled.
 - **`install.sh` no longer downloads anything:** it fails if `out/tvhome.apk` is missing and refuses a build older than its source. It never disables a stock launcher unless `DISABLE_STOCK_HOME=1` (and on Google TV also `GOOGLE_TV=1`). Running it on the emulator left `pm list packages -d` empty.
-- **1.5.7 emulator checks passed:** home, D-pad focus, add/move/replace/remove, hold OK, Settings, both toggles, wallpaper picker, Inputs and Apps panels, Back, hold Back, Home routing. No crashes.
-- **1.5.8 emulator checks passed:** the five-app dock (Netflix, YouTube, Spotify, Prime Video, Stremio) rendered with the white marks, in the owner's order, with labels; the top controls are icon-only. The Settings panel opens via **Add app → Up (Inputs) → Right (Apps) → Right (Settings) → OK**. With the Home button service enabled/bound, Home returned to `com.ansub.tvhome`; with it off, Home stayed on `tvlauncher`. The emulator has only the YouTube stub, so the other four dock apps were temporary packages using the real package names; all four were uninstalled and the saved list reset to `com.google.android.youtube.tv`. No crashes. The five-logo screenshot is `docs/screenshots/home.jpg`.
-- Emulator-only numbers (1.5.7; 1.5.8 adds only seven small vector drawables, not re-measured): **31.7 MB PSS**, **3.7% janky frames**, p50 21 ms / p90 24 ms / p99 38 ms with host GPU. These are not the TV's numbers.
+- **1.5.9 emulator checks passed:** Prime Video showed the full smile plus arrow, and AirScreen, YouTube and Google Play Store showed their white marks with labels. The Settings panel opened via **Add app → Up (Inputs) → Right (Apps) → Right (Settings) → OK**. The Prime and AirScreen packages were temporary stubs using the real names; both were uninstalled and the saved list reset to `com.google.android.youtube.tv`. No crashes. `docs/screenshots/home.jpg` and `settings.jpg` are the 1.5.9 test screenshots.
+- **1.5.7/1.5.8 checks stand:** home, D-pad focus, add/move/replace/remove, hold OK, Settings, both toggles, wallpaper picker, Inputs and Apps panels, Back, hold Back, Home routing. The 1.5.8 five-logo dock and icon-only controls were verified on 2026-11-05.
+- Emulator-only numbers: **1.5.9: 41,345 KB PSS / 161,360 KB RSS**, 12 frames after 10 focus moves, **2 janky (16.67%)**, p50 21 ms, p90 26 ms, p95 32 ms, p99 32 ms, 0 missed vsync, 0 slow UI thread. The frame sample is small; 1.5.7 measured 31.7 MB and 3.7% over 54 frames. These are not the TV's numbers.
 - **Ad blocking:** the official YouTube app cannot be ad-blocked by this launcher. SmartTube is a separate optional install (MIT, third-party), not bundled; it was not installed because the TV was offline. No ad-block is claimed.
-- Next: reconnect the TV, install 1.5.8 with the five apps, verify the logos/controls/Home, then measure **its** RAM/frames. Do not start cleanup until the owner approves each package.
+- Next: reconnect the TV, install 1.5.9 with the five apps, verify the Prime arrow, AirScreen/Play Store marks, focus sound, full-res glass and Home, then measure **its** RAM/frames. Do not start cleanup until the owner approves each package.
 
 ## Hard rules
 
@@ -54,7 +56,8 @@ Remote: `https://github.com/raYhanryd/tv-detox-cleanframe` (public). Upstream re
 | YouTube remote button | Not required; do not spend effort preserving it. |
 | YouTube ads | Do not bundle an ad blocker or unofficial YouTube app. The official app cannot be ad-blocked by the launcher. SmartTube is an optional separate install (MIT, third-party); not installed (TV offline, 2026-11-05). |
 | Top controls | Icon-only Inputs, Apps and Settings, matching the reference; the network icon stays. Implemented in 1.5.8. |
-| Dock icons | White monochrome brand marks for known packages, like CleanFrame; unknown packages keep their own icon. Implemented in 1.5.8. |
+| Dock icons | White monochrome brand marks for known packages, like CleanFrame; unknown packages keep their own icon. Implemented in 1.5.8; extended to AirScreen and Play Store and fixed the Prime arrow in 1.5.9. |
+| Dock sound | A short, soft tick when focus moves between home tiles; no sound on initial launch. Implemented in 1.5.9. |
 
 ## Tooling layout (installed 2026-10-30/31)
 
@@ -99,23 +102,24 @@ Do not commit `out/`, `key.jks`, `.tools/`, `.android/`. `key.jks` is generated 
 | `src/com/ansub/tvhome/MainActivity.java` | One screen (~1,850 lines): glass dock and white brand marks, clock, icon-only top controls, wallpaper, tiles, panels, inputs, network, menus. |
 | `src/com/ansub/tvhome/HomeButton.java` | Opt-in accessibility service; redirects any of the three stock home screens to this launcher, debounced with crash/failure guards. Also answers which stock home exists for the Settings row. |
 | `src/com/ansub/tvhome/LineIcon.java` | Vector-ish line icons from int op arrays; no image resources. |
-| `res/drawable/logo_*.xml` | Seven white vector brand marks: Netflix, YouTube, Spotify, Prime Video, Stremio, Apple TV, YouTube Music. Unknown packages use their installed icon. |
+| `res/drawable/logo_*.xml` | Eight white vector brand marks: Netflix, YouTube, Spotify, Prime Video (smile + arrow head), Stremio, Apple TV, YouTube Music, Google Play Store. AirScreen uses `res/drawable-nodpi/logo_airscreen.png`, a white transparent PNG. Unknown packages use their installed icon. |
+| `res/raw/hover.wav` | Generated 75 ms mono focus tick, loaded by `SoundPool`; no third-party audio. |
 | `src/com/ansub/tvhome/Strings.java` | 16-language labels and date patterns. |
 | `build.sh` | Generates `Apps.java`, aapt2 compile/link, javac, d8, zipalign, apksigner. |
-| `res/drawable-nodpi/` | Six `wallpaper_*.jpg`, six `dock_*.png`, six `panel_*.png`, `plate.png`. |
+| `res/drawable-nodpi/` | Six `wallpaper_*.jpg`, six full-size `dock_*.png` (1504×232), six full-size `panel_*.png` (1504×888), 2× `plate.png`, `logo_airscreen.png`. |
 | `assets/fonts/` | Manrope variable font + OFL licence. |
 | `tools/generate_assets.py` | Deterministic Pillow renderer for all wallpaper/glass bitmaps. |
 | `tools/env.sh` | Sets Java 17, SDK, adb, emulator, AVD paths. |
-| `docs/screenshots/` | Final emulator screenshots (`home.jpg`, `settings.jpg`, `wallpapers.jpg`); `home.jpg` is the 1.5.8 five-logo test. |
+| `docs/screenshots/` | Final emulator screenshots (`home.jpg`, `settings.jpg`, `wallpapers.jpg`); `home.jpg` is the 1.5.9 four-mark test (Prime Video, YouTube, AirScreen, Google Play Store). |
 | `mockups/` | Design mockups + generator + credits (not shipped). |
 | `docs/restyle-plan.md` | Mapping, performance budget, limits, open questions. |
 
 ## What was built
 
 - **Geometry:** 1920×1080 design, scaled by `widthPixels / 1920f`. Dock glass 1504×232 at (208, 676); tiles 288×200, 296 pitch, tile radius 32, dock radius 48. CleanFrame's measured geometry.
-- **Pre-rendered assets:** each wallpaper is a 1920×1080 JPEG with a top shade and bottom scrim. Per-wallpaper dock glass (blur 28, veil) and settings glass (blur 42) are PNGs at half-resolution and upscaled by the TV. `plate.png` is a white 24%-alpha rounded focus plate. No runtime blur.
+- **Pre-rendered assets:** each wallpaper is a 1920×1080 JPEG with a top shade and bottom scrim. Per-wallpaper dock glass (blur 28, veil) and settings glass (blur 42) are PNGs at the full 1504×232 / 1504×888 design size with a 4× anti-aliased rounded mask. `plate.png` is a white 24%-alpha rounded focus plate at 2× (576×400), downscaled by the TV. No runtime blur.
 - **Focus:** plate alpha 0→1 in 120 ms; icon/label `translationY(-3dp)` + `scale 1.04` in 180 ms with `withLayer()`. No layout during animation.
-- **Dock:** `HorizontalScrollView` + `LinearLayout`; focus scrolls the row. Known packages get a bundled white vector mark, centered at its own proportions; other apps get their own icon, fit-cropped. Rebuilds clear the row with `dockRow.removeAllViews()` (a targeted removal once left a stale, focusable tile behind; do not regress this).
+- **Dock:** `HorizontalScrollView` + `LinearLayout`; focus scrolls the row. Known packages get a bundled white mark, centered at its own proportions; other apps get their own icon, fit-cropped. A short `SoundPool` tick plays as focus moves between dock tiles, except during the first 450 ms after `onResume`. Rebuilds clear the row with `dockRow.removeAllViews()` (a targeted removal once left a stale, focusable tile behind; do not regress this).
 - **Top controls:** Inputs, Apps and Settings are icon-only (their names remain content descriptions); the network icon is unchanged. Optional quick shortcuts keep labels. With the narrower row, the tested D-pad path is **Add app → Up (Inputs) → Right (Apps) → Right (Settings) → OK**; Left from Inputs returns to the dock.
 - **Settings:** Wallpaper, Apps on Home, Inputs, Show date, App labels, Google TV home (reads the stock launcher that actually exists: enabled/disabled/not available), Brightness (non-box TVs), TV settings. The two toggles update immediately and persist in `config` prefs.
 - **Wallpaper picker:** six thumbnails + half-res preview; OK saves, Back keeps the current one.
@@ -123,6 +127,18 @@ Do not commit `out/`, `key.jks`, `.tools/`, `.android/`. `key.jks` is generated 
 - **Font:** Manrope variable from `assets/fonts` (OFL); falls back to the TV's sans-serif.
 
 ## Verification
+
+### 1.5.9 emulator (2026-11-06)
+
+Environment: Android TV 14 API 34 emulator, 1920×1080, host GPU.
+
+- `aapt2 dump badging`: `com.ansub.tvhome` 1.5.9 (22), minSdk 21, targetSdk 34; APK 4,680,923 bytes; SHA-256 `8d63beff28d70a69b6746dced04f1949d90221114dcad0269767412720fb93ac`; `apksigner verify` and `zipalign` OK.
+- Prime Video showed the smile **and arrow head**; AirScreen showed the official “AS” monogram; Google Play Store and YouTube showed their marks. `docs/screenshots/home.jpg`.
+- Settings opened with the same D-pad path and showed the full-resolution panel; `docs/screenshots/settings.jpg`.
+- The Prime and AirScreen test packages were uninstalled and the saved list reset to `com.google.android.youtube.tv`; the Play Store is the emulator's real package.
+- Focus sound: `SoundPool` loading produced no logcat errors. The emulator was started with `-no-audio`, so the tick was not heard; this needs the TV.
+- Memory: **41,345 KB PSS / 161,360 KB RSS**. Frames after 10 focus moves: **12 frames, 2 janky (16.67%)**, p50 21 ms, p90 26 ms, p95 32 ms, p99 32 ms, 0 missed vsync, 0 slow UI thread. Small sample; treat as a smoke test.
+- No crashes. Not verified for 1.5.9: the TV, real HDMI, real GPU frames, 12/24, reboot, audible sound.
 
 ### 1.5.8 emulator (2026-11-05)
 
@@ -164,15 +180,18 @@ Run on Android TV 14 API 34 emulator, 1920×1080, `-gpu host`, release APK:
 - On Android 11+, sideloaded apps may need **App info → ⋮ → Allow restricted settings** before the accessibility toggle can be turned on.
 - **Top-control focus after the labels were removed:** the row is narrower. The tested path is **Add app → Up (Inputs) → Right (Apps) → Right (Settings) → OK**. Left from Inputs returns to the dock, and Up from a middle dock tile may stay in the dock. Do not report the controls as broken from a middle tile.
 - **Accessibility setting:** no launcher code writes `enabled_accessibility_services`; the emulator's setting was toggled during test cleanup. Re-enable our service with the GUIDE command after a cleanup or reinstall. Do not weaken the Home service to make the emulator test simpler.
-- **The five-logo screenshot used temporary packages:** the emulator has only the YouTube stub, so `com.netflix.ninja`, `com.spotify.tv.android`, `com.amazon.amazonvideo.livingroom` and `com.stremio.one` were temporary test packages with the real names. They were uninstalled; the saved list is `com.google.android.youtube.tv`. The screenshot is UI evidence, not a real-TV install.
-- **Unknown dock apps keep their color icon:** only the seven packages in `brandLogo` get the white marks. Add a vector drawable and a `brandLogo` entry for another package.
-- **Prime Video mark:** cropped from Wikimedia's historical `Amazon Prime Video logo.svg`, public domain as a simple logo (PD-textlogo), trademark Amazon. The current 2024 Prime Video mark is different; do not swap it silently.
+- **The 1.5.9 screenshot used temporary packages:** the emulator has only the YouTube stub, so `com.amazon.amazonvideo.livingroom` and `com.ionitech.airscreen` were temporary test packages with the real names; the Play Store is real. Both temporary apps were uninstalled and the saved list is `com.google.android.youtube.tv`. The screenshot is UI evidence, not a real-TV install.
+- **Unknown dock apps keep their color icon:** only the nine packages in `brandLogo` get the white marks. Add a vector drawable (or a white transparent PNG) and a `brandLogo` entry for another package.
+- **Prime Video mark:** the historical Wikimedia `Amazon Prime Video logo.svg` splits the smile and arrow head into separate paths. 1.5.8 used only the smile and looked arrow-less; 1.5.9 adds the `M580.4,148.4…` arrow path and starts the crop at y 147.9. Keep both paths. The source is public domain as a simple logo (PD-textlogo); Amazon's trademark still applies. The current 2024 Prime mark is different; do not swap it silently.
+- **AirScreen mark:** white transparent PNG traced from the official 512px Google Play icon, 512×322, displayed at 100×63. It is the AirScreen trademark, used only to identify the app; see notices. The Play Store mark is the Simple Icons CC0 `googleplay` path.
+- **Focus sound:** it is intentionally silent for 450 ms after `onResume`; do not remove that guard or the launcher clicks on every launch. The sound is bundled and generated, not sampled. The emulator's `-no-audio` means it cannot confirm audibility.
+- **Full-resolution glass:** the dock is 1504×232 and each panel 1504×888; decoded panel memory is higher (emulator PSS 41.3 MB vs 31.7 MB at 1.5.7). The TV has 2 GB-class RAM; re-measure there.
 - The TV cleanup is not automated here and is not approved. Do not run `pm disable-user` on the TV.
 
 ## Next steps
 
-1. Reconnect the ORCA: `adb connect 192.168.8.187:5555`; confirm the five packages; install 1.5.8 with `sh install.sh 192.168.8.187:5555 "com.netflix.ninja,com.google.android.youtube.tv,com.spotify.tv.android,com.amazon.amazonvideo.livingroom,com.stremio.one"`.
-2. Confirm the white logos, icon-only top controls, Home (service on), hold Back, Settings → Google TV home, HDMI, clock/date, wallpaper, App labels. Note the role-query warning; the service is the route.
+1. Reconnect the ORCA: `adb connect 192.168.8.187:5555`; confirm the five packages; install 1.5.9 with `sh install.sh 192.168.8.187:5555 "com.netflix.ninja,com.google.android.youtube.tv,com.spotify.tv.android,com.amazon.amazonvideo.livingroom,com.stremio.one"`.
+2. Confirm the Prime arrow, AirScreen/Play Store marks, dock focus sound, full-res glass, Home (service on), hold Back, Settings → Google TV home, HDMI, clock/date, wallpaper, App labels. Note the role-query warning; the service is the route.
 3. Measure `dumpsys meminfo` and `dumpsys gfxinfo` on the TV; show free RAM before/after.
 4. Decide on SmartTube separately if the owner still wants ad-free YouTube; do not bundle or patch the official app.
 5. Measure Google TV launcher idle cost; present the three options (leave cached / force-stop after boot / disable with recovery) and wait for the owner.

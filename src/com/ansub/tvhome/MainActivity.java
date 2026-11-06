@@ -24,6 +24,8 @@ import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
+import android.media.AudioAttributes;
+import android.media.SoundPool;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
@@ -144,6 +146,13 @@ public class MainActivity extends Activity {
             R.drawable.panel_3, R.drawable.panel_4, R.drawable.panel_5};
     private float scale = 1f;
 
+    // A short, soft tick as focus moves between home tiles. It is suppressed for the first focus
+    // after Home comes back up, so launching the launcher itself is silent.
+    private SoundPool hover;
+    private int hoverSound;
+    private boolean hoverLoaded, hoverArmed;
+    private final Runnable armHover = () -> hoverArmed = true;
+
     private static Typeface regular, semibold;
 
     private FrameLayout root;
@@ -195,6 +204,7 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         saveConfig(getIntent());
         loadFonts();
+        setupHoverSound();
         scale = getResources().getDisplayMetrics().widthPixels / 1920f;
 
         wallpaperIndex = wallpaper();
@@ -228,10 +238,33 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (hover != null) {
+            hover.release();
+            hover = null;
+        }
         unregisterReceiver(packagesChanged);
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         if (cm != null) try { cm.unregisterNetworkCallback(networkChanged); } catch (Exception ignored) {}
         super.onDestroy();
+    }
+
+    // A soft, short tick when focus moves between home tiles. SoundPool keeps a fast D-pad sweep
+    // off the UI thread, and the first focus after Home comes up stays silent.
+    private void setupHoverSound() {
+        AudioAttributes attrs = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
+        hover = new SoundPool.Builder().setMaxStreams(2).setAudioAttributes(attrs).build();
+        hover.setOnLoadCompleteListener((pool, id, status) -> {
+            if (status == 0) hoverLoaded = true;
+        });
+        hoverSound = hover.load(this, R.raw.hover, 1);
+    }
+
+    private void playHover() {
+        if (!hoverArmed || !hoverLoaded || hover == null) return;
+        try { hover.play(hoverSound, 0.30f, 0.30f, 1, 0, 1f); } catch (Exception ignored) {}
     }
 
     @Override
@@ -319,6 +352,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        hoverArmed = false;
+        getWindow().getDecorView().removeCallbacks(armHover);
+        getWindow().getDecorView().postDelayed(armHover, 450);
         // Rebuild only when apps were installed, removed or updated.
         if (dirty) {
             dirty = false;
@@ -342,6 +378,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
+        hoverArmed = false;
+        getWindow().getDecorView().removeCallbacks(armHover);
         // Left normally (an app or Settings opened), so it didn't crash.
         getWindow().getDecorView().removeCallbacks(homeOk);
         HomeButton.onHomeOk(this);
@@ -895,6 +933,8 @@ public class MainActivity extends Activity {
             case "com.stremio.one": return new int[] {R.drawable.logo_stremio, 84, 84};
             case "com.apple.atve.androidtv.appletv": return new int[] {R.drawable.logo_appletv, 96, 96};
             case "com.google.android.youtube.tvmusic": return new int[] {R.drawable.logo_youtubemusic, 88, 88};
+            case "com.ionitech.airscreen": return new int[] {R.drawable.logo_airscreen, 100, 63};
+            case "com.android.vending": return new int[] {R.drawable.logo_playstore, 88, 88};
             default: return null;
         }
     }
@@ -941,7 +981,7 @@ public class MainActivity extends Activity {
         name.setSingleLine(true);
         name.setEllipsize(android.text.TextUtils.TruncateAt.END);
         name.setGravity(Gravity.CENTER);
-        name.setShadowLayer(Math.max(1, px(2)), 0, px(2), 0x5A000000);
+        name.setShadowLayer(Math.max(1, px(1)), 0, Math.max(1, px(1)), 0x45000000);
         name.setPadding(px(14), 0, px(14), 0);
         name.setVisibility(labelsOn() ? View.VISIBLE : View.GONE);
         LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-2, -2);
@@ -954,7 +994,10 @@ public class MainActivity extends Activity {
         card.setTag(key);
         card.setContentDescription(label);
         card.setOnFocusChangeListener((v, has) -> {
-            if (has) focusedKey = key;
+            if (has) {
+                focusedKey = key;
+                playHover();
+            }
             plate.animate().cancel();
             plate.animate().alpha(has ? 1f : 0f).setDuration(FOCUS_IN_MS).start();
             inner.animate().cancel();

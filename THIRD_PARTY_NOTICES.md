@@ -38,12 +38,13 @@ The pre-rendered dock glass (`dock_*.png`), settings glass (`panel_*.png`) and f
 
 ## App icons and brand marks
 
-The launcher ships a small set of **white vector brand marks** for known TV apps, used on the dock when that package is on the home screen:
+The launcher ships a small set of **white brand marks** for known TV apps, used on the dock when that package is on the home screen:
 
 | Shipped file | Source | Licence |
 | --- | --- | --- |
-| `res/drawable/logo_netflix.xml`, `logo_youtube.xml`, `logo_spotify.xml`, `logo_stremio.xml`, `logo_appletv.xml`, `logo_youtubemusic.xml` | [Simple Icons](https://simpleicons.org/) | **CC0 1.0 Universal** for the SVG artwork; the brand marks remain trademarks of their owners |
-| `res/drawable/logo_primevideo.xml` | Cropped from [File:Amazon Prime Video logo.svg](https://commons.wikimedia.org/wiki/File:Amazon_Prime_Video_logo.svg) on Wikimedia Commons (historical 2018 mark) | **Public domain** as a simple text/shape logo (PD-textlogo); Amazon's trademark rights still apply |
+| `res/drawable/logo_netflix.xml`, `logo_youtube.xml`, `logo_spotify.xml`, `logo_stremio.xml`, `logo_appletv.xml`, `logo_youtubemusic.xml`, `logo_playstore.xml` | [Simple Icons](https://simpleicons.org/) | **CC0 1.0 Universal** for the SVG artwork; the brand marks remain trademarks of their owners |
+| `res/drawable/logo_primevideo.xml` | Cropped from [File:Amazon Prime Video logo.svg](https://commons.wikimedia.org/wiki/File:Amazon_Prime_Video_logo.svg) on Wikimedia Commons (historical 2018 mark), including both the smile and its separate arrow-head path | **Public domain** as a simple text/shape logo (PD-textlogo); Amazon's trademark rights still apply |
+| `res/drawable-nodpi/logo_airscreen.png` | White transparent trace of the official AirScreen app icon from its [Google Play listing](https://play.google.com/store/apps/details?id=com.ionitech.airscreen) | The AirScreen name and mark remain trademarks of their owner; used only to identify the installed app, with no affiliation or endorsement |
 
 The marks are used only to identify apps the owner already installed. Brand names and marks are trademarks of their owners; this project claims no affiliation or endorsement.
 

@@ -45,12 +45,15 @@ def vgrad(w, h, stops):
     return im.resize((w, h), Image.BILINEAR)
 
 
-def rounded_mask(size, radius):
-    m = Image.new("L", size, 0)
+def rounded_mask(size, radius, ss=4):
+    # Draw the mask oversampled, then shrink it, so the glass corners are anti-aliased
+    # instead of a hard one-pixel staircase when the TV draws the bitmap.
+    big = (size[0] * ss, size[1] * ss)
+    m = Image.new("L", big, 0)
     ImageDraw.Draw(m).rounded_rectangle(
-        (0, 0, size[0] - 1, size[1] - 1), radius=radius, fill=255
+        (0, 0, big[0] - 1, big[1] - 1), radius=radius * ss, fill=255
     )
-    return m
+    return m.resize(size, Image.LANCZOS)
 
 
 def wallpaper(name, shade=True):
@@ -115,12 +118,12 @@ def main():
         base = wallpaper(name)
         base.convert("RGB").save(OUT / f"wallpaper_{i}.jpg", quality=91, optimize=True)
 
-        dock = glass(base, DOCK, PANEL_R, 32, 0.38, 0.5, highlight=58)
+        dock = glass(base, DOCK, PANEL_R, 32, 0.38, 1.0, highlight=58)
         dock.save(OUT / f"dock_{i}.png", optimize=True)
 
         dim = base.copy()
         veil(dim, 0.36)
-        panel = glass(dim, PANEL, PANEL_R, 46, 0.42, 0.5, highlight=48)
+        panel = glass(dim, PANEL, PANEL_R, 46, 0.42, 1.0, highlight=48)
         panel.save(OUT / f"panel_{i}.png", optimize=True)
 
     plate().save(OUT / "plate.png", optimize=True)
