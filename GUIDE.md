@@ -39,7 +39,7 @@ The toolchain is installed; one line sets every path:
 sh build.sh
 ```
 
-Verified on 2026-11-06: exit 0, `out/tvhome.apk`, signed with the local `key.jks`, package `com.ansub.tvhome` 1.5.9 (22), **4,680,923 bytes**. `apksigner verify` and `aapt2 dump badging` pass.
+Verified on 2026-11-06: exit 0, `out/tvhome.apk`, signed with the local `key.jks`, package `com.ansub.tvhome` 1.5.9 (22), **6,446,299 bytes** (SHA-256 `7dc54c3b231df1fdf77773b242ddb2235bb280fb4b685a10b52ff21986c97186`). `apksigner verify` and `aapt2 dump badging` pass.
 
 `build.sh` creates `key.jks` on the first build. **Keep `key.jks`**; future updates must be signed with the same key. It is git-ignored, so back it up if you plan to update an installed build from another machine.
 
@@ -92,6 +92,23 @@ Do this after reading the recovery section. The ORCA has 1.5.7 installed; 1.5.9 
    | Max | `com.wbd.stream` |
    | Plex | `com.plexapp.android` |
 
+   **Push an already-built APK directly** (quick update):
+
+   ```sh
+   adb connect <TV_IP>:<PORT>
+   adb install -r out/tvhome.apk
+   adb shell am start -n com.ansub.tvhome/.MainActivity
+   ```
+
+   Or copy it to the TV first:
+
+   ```sh
+   adb push out/tvhome.apk /sdcard/Download/tvhome.apk
+   adb shell pm install -r /sdcard/Download/tvhome.apk
+   ```
+
+   `install.sh` above is still the complete route: it also sets the dock list and checks Home.
+
 5. **Home button on this launcher:** TV **Settings → Device Preferences → Accessibility → Home button** (the app's accessibility service). It works with Google TV's launcher (`launcherx`), Android TV 9–11's (`tvlauncher`) and the older leanback launcher, without disabling any of them. On Android 13+ sideloaded apps, if the toggle is greyed out, open **Settings → Apps → See all apps → Home → ⋮ → Allow restricted settings** first. Play Protect may warn because the app has an accessibility service. On the ORCA, 1.5.7's service was enabled and Home was verified; after a 1.5.8 update check the toggle again. Its Android 11 build does not support `cmd role get-role-holders`, so `install.sh` may warn that Home still opens the TV's own screen; ignore that line if Home works — the accessibility service is the route.
 6. If the Accessibility screen freezes, enable the service over adb instead (keeps other services):
 
@@ -112,6 +129,24 @@ Do this after reading the recovery section. The ORCA has 1.5.7 installed; 1.5.9 
 8. **Turn debugging off** when finished: Developer options → USB debugging, Wireless debugging, Network debugging. Left on, other devices on your network can ask to control the TV.
 
 If Home keeps opening Google TV's launcher even after the accessibility service is on, the service did not get enabled (or the TV needs a reboot). See [Recovery](#recovery).
+
+## Full HD
+
+Every shipped image is already at the launcher's design size: six 1920×1080 wallpapers (JPEG quality 95, 4:4:4), six 1504×232 dock panes, six 1504×888 settings panes, a 576×400 focus plate, the 512×322 AirScreen PNG, and vector marks/icons for the rest. The launcher does not upscale those assets at runtime.
+
+The remaining limit is Android's logical UI size, not the artwork. The ORCA reports **1280×720** even though its panel is 1080p, so Android renders the launcher at 1280 and upscales it. To make Android render natively at 1920×1080:
+
+```sh
+adb shell wm size 1920x1080
+```
+
+Check it with `adb shell wm size` and reboot once. This is system-wide; if the TV feels slower or the system UI looks wrong, undo it with:
+
+```sh
+adb shell wm size reset
+```
+
+The 1080p emulator already runs at 1920×1080; [docs/screenshots/home-hd.png](docs/screenshots/home-hd.png) is an unscaled capture.
 
 ## What the home screen does
 

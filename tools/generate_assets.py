@@ -116,7 +116,10 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     for i, name in enumerate(NAMES):
         base = wallpaper(name)
-        base.convert("RGB").save(OUT / f"wallpaper_{i}.jpg", quality=91, optimize=True)
+        # 4:4:4 at 95 keeps the photo and glass edges clean on a 1080p panel; these files are
+        # bundled, so the extra few hundred KB is worth it. The TV only decodes them.
+        base.convert("RGB").save(OUT / f"wallpaper_{i}.jpg", quality=95,
+                                 subsampling=0, optimize=True)
 
         dock = glass(base, DOCK, PANEL_R, 32, 0.38, 1.0, highlight=58)
         dock.save(OUT / f"dock_{i}.png", optimize=True)

@@ -13,7 +13,7 @@
 | Mockups | Done — [mockups/](mockups/) |
 | Restyled UI | **Done** — dock, clock, controls, settings, wallpaper picker, toggles |
 | Pre-rendered assets | **Done** — six wallpapers, six dock panes, six settings panes, focus plate |
-| Build | **Verified** — signed 4,680,923-byte APK, package 1.5.9 (22), minSdk 21 / targetSdk 34; Prime arrow, AirScreen/Play Store marks, focus tick, full-res glass |
+| Build | **Verified** — signed 6,446,299-byte APK, package 1.5.9 (22), minSdk 21 / targetSdk 34; Prime arrow, AirScreen/Play Store marks, focus tick, full-res glass, 1920×1080 wallpapers |
 | Emulator | Installed in `.tools/`; API 34 Android TV, 1920×1080 |
 | UI tests | **1.5.9 emulator passed**: Prime smile + arrow, AirScreen/Play Store marks, focus sound wired with no audio errors, full-res Settings; 1.5.7/1.5.8 interaction checks stand |
 | Pre-install review | **Done** — 10 findings fixed; Home routing now covers `launcherx`, `tvlauncher`, `leanbacklauncher` |
@@ -33,8 +33,9 @@
 - Added white marks for AirScreen and Google Play Store. AirScreen is a white transparent PNG (512×322, displayed 100×63) traced from the official Play Store icon; Play Store is the Simple Icons CC0 `googleplay` path (88×88).
 - Added `res/raw/hover.wav` (75 ms, 44.1 kHz mono) and a `SoundPool` focus tick at 0.30 volume, silent for the first 450 ms after `onResume` and released in `onDestroy`.
 - Re-rendered dock and settings glass at the full 1504×232 / 1504×888 design size with a 4× anti-aliased rounded mask; the focus plate stays 2× (576×400); the dock label shadow is 1 px.
-- Version 1.5.9 (22); APK 4,680,923 bytes; SHA-256 `8d63beff28d70a69b6746dced04f1949d90221114dcad0269767412720fb93ac`.
-- Emulator: Prime arrow, AirScreen/Play Store, Settings; no crashes; **41,345 KB PSS / 161,360 KB RSS**; 12-frame sample after 10 focus moves, **2 janky (16.67%)**, p50 21 / p90 26 / p95 32 / p99 32 ms; 0 missed vsync, 0 slow UI thread. Sound loaded with no audio/logcat errors, but the emulator was `-no-audio`, so it was not heard.
+- Re-encoded all six wallpapers at JPEG quality 95 with 4:4:4 chroma (from 91) so photo edges stay clean on a 1080p panel. All shipped raster assets are now 1920×1080 or the native 1504×232 / 1504×888 / 576×400 glass sizes; all marks are vectors except the 512×322 AirScreen PNG, and the launcher icon/banner are vectors. Removed macOS `.DS_Store` files from `res/` and the tree.
+- Version 1.5.9 (22); APK **6,446,299 bytes**; SHA-256 `7dc54c3b231df1fdf77773b242ddb2235bb280fb4b685a10b52ff21986c97186`.
+- Emulator: Prime arrow, AirScreen/Play Store, Settings; no crashes; **34,411 KB PSS / 149,904 KB RSS** after the wallpaper re-encode (the earlier four-app test was 41,345 KB); 12-frame sample after 10 focus moves, **2 janky (16.67%)**, p50 21 / p90 26 / p95 32 / p99 32 ms; 0 missed vsync, 0 slow UI thread. The frames were not re-run after the JPEG change. Sound loaded with no audio/logcat errors, but the emulator was `-no-audio`, so it was not heard. `docs/screenshots/home-hd.png` is the 1920×1080 capture.
 - Temporary Prime and AirScreen test packages were uninstalled and the saved list reset to `com.google.android.youtube.tv`; the TV was still unreachable (`No route to host`).
 
 ### 1.5.8 (2026-11-05)
@@ -52,7 +53,7 @@
 - Top-right controls: Inputs, Apps and Settings are **icon-only**; optional quick shortcuts keep their labels; the network icon is unchanged.
 - Focus is opacity and transform only: plate fades in over 120 ms; icon/name lifts 3 dp and scales 1.04 over 180 ms with `withLayer()`. A bundled 75 ms `SoundPool` tick plays on dock focus, skipping the first 450 ms after `onResume`.
 - Settings is a glass panel with Wallpaper, Apps on Home, Inputs, Show date, App labels, Google TV home, Brightness (non-box TVs) and TV settings.
-- Wallpaper picker: six thumbnails, half-res preview, OK saves, Back leaves the current wallpaper.
+- Wallpaper picker: six thumbnails, 960×540 preview (more than the 640×360 view), OK saves, Back leaves the current wallpaper.
 - **Fixed during testing:** a rebuild could leave a removed app's tile in the dock because only tracked views were removed. `buildTiles()` now clears the dock row itself (`dockRow.removeAllViews()`), so a removed tile cannot remain focusable or launchable. Confirmed by removing YouTube and by removing the last app.
 - Preserved app launching, HDMI input list and menus, add/move/replace/remove, hold OK, Back, network icon, clock and the `HomeButton` service.
 
@@ -68,11 +69,11 @@
 
 ### Assets and build
 
-- `tools/generate_assets.py` renders all shipping bitmaps with Pillow: six 1920×1080 JPEG wallpapers with top shade and bottom scrim, six full-size dock panes (1504×232), six full-size settings panes (1504×888) and a 2× `plate.png` (576×400), all with a 4× anti-aliased rounded mask. No runtime blur.
+- `tools/generate_assets.py` renders all shipping bitmaps with Pillow: six 1920×1080 JPEG wallpapers (quality 95, 4:4:4) with top shade and bottom scrim, six full-size dock panes (1504×232), six full-size settings panes (1504×888) and a 2× `plate.png` (576×400), all with a 4× anti-aliased rounded mask. No runtime blur.
 - Bundled Manrope variable font (OFL) and its licence under `assets/fonts/`.
 - Added [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - `tools/env.sh` now puts the emulator on `PATH`.
-- APK grew from 54 KB (stock) to **3.6 MB** (3,779,577 bytes at 1.5.8), almost entirely the six full-quality photos and pre-rendered panes. 1.5.8 adds seven small vector drawables; the size is effectively unchanged.
+- APK grew from 54 KB (stock) to **6.4 MB** (6,446,299 bytes at 1.5.9), almost entirely the six full-quality photos and pre-rendered panes. The 1.5.9 wallpaper re-encode (95/4:4:4) accounts for the jump from 4.68 MB.
 
 ### Docs
 
@@ -88,12 +89,13 @@
 
 Environment: Android TV 14 API 34 emulator, 1920×1080, host GPU.
 
-- `aapt2 dump badging`: `com.ansub.tvhome` 1.5.9 (22), minSdk 21, targetSdk 34; APK 4,680,923 bytes; SHA-256 `8d63beff28d70a69b6746dced04f1949d90221114dcad0269767412720fb93ac`; `apksigner verify` and `zipalign` OK.
+- `aapt2 dump badging`: `com.ansub.tvhome` 1.5.9 (22), minSdk 21, targetSdk 34; APK **6,446,299 bytes**; SHA-256 `7dc54c3b231df1fdf77773b242ddb2235bb280fb4b685a10b52ff21986c97186`; `apksigner verify` and `zipalign` OK.
 - Prime Video showed the smile **and arrow head**; AirScreen, Google Play Store and YouTube showed their marks. `docs/screenshots/home.jpg`.
 - Settings opened via Add app → Up (Inputs) → Right (Apps) → Right (Settings) → OK; the full-resolution panel is `docs/screenshots/settings.jpg`.
 - The Prime and AirScreen packages were temporary stubs using the real names; both were removed and the saved list reset to `com.google.android.youtube.tv`. The Play Store is the emulator's real package.
 - Focus sound: SoundPool loaded without logcat errors; `-no-audio` means audibility is unverified.
-- Memory: 41,345 KB PSS / 161,360 KB RSS. Frames: 12 total, 2 janky (16.67%), p50 21 ms, p90 26 ms, p95 32 ms, p99 32 ms; 0 missed vsync, 0 slow UI thread. Small sample; not TV performance.
+- Memory: 34,411 KB PSS / 149,904 KB RSS after the wallpaper re-encode (41,345 KB PSS in the earlier four-app run). Frames: 12 total, 2 janky (16.67%), p50 21 ms, p90 26 ms, p95 32 ms, p99 32 ms; 0 missed vsync, 0 slow UI thread. Small sample; not TV performance.
+- Full-HD check: the new `docs/screenshots/home-hd.png` is a native **1920×1080** emulator capture; all wallpapers are 1920×1080 and all glass assets are at their design size. The ORCA still runs a 1280×720 logical UI; `adb shell wm size 1920x1080` is documented in GUIDE.md, with `wm size reset` to undo.
 - No crashes. Not verified: TV, real HDMI, real GPU frames, 12/24, reboot, audible sound.
 
 ### 1.5.8 emulator (2026-11-05)

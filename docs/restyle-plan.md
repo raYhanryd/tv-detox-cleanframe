@@ -22,7 +22,7 @@ The mapping below is kept as the design record. Where the shipped build differs 
 | Art Mode / All apps / Settings top right | Inputs / Apps / Settings, **icons only**, then the live Wi-Fi/Ethernet/offline icon. From the dock, Right to Add app and Up reaches Inputs; Right walks Apps → Settings → network. Back returns. |
 | Dock scrolls left/right | Horizontal scrolling with focus, via `HorizontalScrollView`. It uses scroll transforms, not a bespoke `translationX` animation, so no layout runs during movement. |
 | Settings sheet over the blurred stage | A pre-rendered glass panel: Wallpaper, Apps on Home, Inputs, Show date, App labels, Google TV home, Brightness (non-box TVs), TV settings. |
-| Wallpaper picker | Two panes: six thumbnails on the left, half-res preview on the right. OK applies and saves; Back keeps the current wallpaper. |
+| Wallpaper picker | Two panes: six thumbnails on the left, 960×540 preview on the right (displayed at 640×360). OK applies and saves; Back keeps the current wallpaper. |
 | Icon + name labels under dock icons | **App labels** setting: icons + names (default) or icons only. |
 | List layout, icons-only mode, font catalog, material/tint choices, rotation modes | Not in v1. |
 
@@ -108,7 +108,7 @@ Everything lives in `.tools/` and nothing was installed system-wide:
 - Android emulator 37.2.13, `system-images;android-34;android-tv;arm64-v8a`, AVD `tv34` at 1920×1080
 - Pillow in `.tools/venv` for asset generation
 
-`.tools/` is ~11 GB because of the system image. Delete the folder to remove all of it. `. tools/env.sh` sets the paths. `sh build.sh` writes a signed 4,680,923-byte `out/tvhome.apk` (1.5.9); `-A assets` packages the wallpapers, dock/panel panes, focus sound and Manrope. No Gradle, no new Java libraries.
+`.tools/` is ~11 GB because of the system image. Delete the folder to remove all of it. `. tools/env.sh` sets the paths. `sh build.sh` writes a signed 6,446,299-byte `out/tvhome.apk` (1.5.9); `-A assets` packages the wallpapers, dock/panel panes, focus sound and Manrope. No Gradle, no new Java libraries.
 
 ## Recovery before anything risky
 

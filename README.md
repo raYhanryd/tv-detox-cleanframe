@@ -4,6 +4,8 @@
 >
 > **What is different here:** a glass dock with six photo wallpapers, **nine white monochrome brand marks** (Netflix, YouTube, Spotify, Prime Video with its arrow, Stremio, Apple TV, YouTube Music, AirScreen and Google Play Store; other apps keep their own icon), **icon-only Inputs/Apps/Settings controls**, a pre-rendered focus plate, a soft focus tick, a full-resolution glass Settings panel, a wallpaper picker, and two Settings toggles (**Show date**, default off; **App labels**, default on). App launching, HDMI inputs, add/move/remove/replace, the clock and the network icon are kept. No runtime blur, no layout animation, no system animation-scale changes.
 >
+> **Full HD:** every shipped logo is vector or a 512px AirScreen PNG, and all six wallpapers are 1920×1080 JPEGs at quality 95 with 4:4:4 chroma; the launcher icon and banner are vectors. The TV's Android UI still reports 1280×720, so use the one-line `wm size 1920x1080` step in [GUIDE.md](GUIDE.md#full-hd) to make Android render natively at 1080p.
+>
 > **YouTube ads:** this launcher cannot block ads inside the official YouTube app. SmartTube is documented in [GUIDE.md](GUIDE.md#youtube-ads) as an optional separate install; it is not bundled, and it was not installed on 2026-11-05 because the TV was offline.
 >
 > **Build it locally first.** No APK is committed, and `install.sh` never downloads a prebuilt app (the upstream release is a different launcher). Run `. tools/env.sh` then `sh build.sh` to produce `out/tvhome.apk`, then `sh install.sh <TV_IP> "<apps>"`. This needs JDK 17: the project does not build with the Java 25 that may be installed system-wide.
